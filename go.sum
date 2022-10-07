@@ -1,0 +1,4 @@
+github.com/fogfish/it v1.0.0 h1:kiwFHZcrkRLUydZoIoY0gTuMfj38trwvLo0YRyIkeG8=
+github.com/fogfish/it v1.0.0/go.mod h1:NQJG4Ygvek85y7zGj0Gny8+6ygAnHjfBORhI7TdQhp4=
+github.com/fogfish/it/v2 v2.0.0-20220827053314-ff49ca642fd4 h1:QhBF5rj2dBXg0owbQdut8xdX6ylPrbvY8BuRIgu4/W8=
+github.com/fogfish/it/v2 v2.0.0-20220827053314-ff49ca642fd4/go.mod h1:h5FdKaEQT4sUEykiVkB8VV4jX27XabFVeWhoDZaRZtE=
