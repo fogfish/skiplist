@@ -1,0 +1,229 @@
+//
+// Copyright (C) 2022 Dmitry Kolesnikov
+//
+// This file may be modified and distributed under the terms
+// of the MIT license.  See the LICENSE file for details.
+// https://github.com/fogfish/skiplist
+//
+
+package skiplist_test
+
+import (
+	"fmt"
+	"math/rand"
+	"sort"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/fogfish/it/v2"
+	"github.com/fogfish/skiplist"
+	"github.com/fogfish/skiplist/ord"
+)
+
+//
+func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
+	keys := make([]K, 0, len(seed))
+	for k := range seed {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool { return ord.Compare(keys[i], keys[j]) == -1 })
+
+	nul := skiplist.New[K, V](ord)
+
+	one := skiplist.New[K, V](ord)
+	skiplist.Put(one, keys[0], seed[keys[0]])
+
+	few := skiplist.New[K, V](ord)
+	for k, v := range seed {
+		skiplist.Put(few, k, v)
+	}
+
+	t.Run("Put", func(t *testing.T) {
+		list := skiplist.New[K, V](ord)
+		for k, v := range seed {
+			skiplist.Put(list, k, v)
+
+			it.Then(t).
+				Should(it.Equiv(v, skiplist.Get(list, k)))
+		}
+
+		for k, v := range seed {
+			it.Then(t).
+				Should(it.Equiv(v, skiplist.Get(list, k)))
+		}
+	})
+
+	t.Run("Get", func(t *testing.T) {
+		key := keys[0]
+		val := skiplist.Get(nul, key)
+		it.Then(t).
+			Should(it.Equiv(val, *new(V)))
+
+		val = skiplist.Get(one, key)
+		it.Then(t).
+			Should(it.Equiv(val, seed[key]))
+
+		val = skiplist.Get(few, key)
+		it.Then(t).
+			Should(it.Equiv(val, seed[key]))
+
+		for k, v := range seed {
+			it.Then(t).
+				Should(it.Equiv(v, skiplist.Get(few, k)))
+		}
+	})
+
+	t.Run("Split", func(t *testing.T) {
+		for _, at := range []int{0, len(keys) / 2, len(keys) - 1} {
+			key := keys[at]
+			before, after := skiplist.Split(few, key)
+
+			i := -1
+			for before.Tail() {
+				i++
+				k, _ := before.Head()
+
+				it.Then(t).
+					Should(it.Equiv(k, keys[i]))
+			}
+
+			i = at - 1
+			for after.Tail() {
+				i++
+				k, _ := after.Head()
+
+				it.Then(t).
+					Should(it.Equiv(k, keys[i]))
+			}
+		}
+	})
+}
+
+//
+func Bench[K, V comparable](b *testing.B, compare ord.Ord[K], gen func(int) (K, V)) {
+	var (
+		rnd                                    = rand.New(rand.NewSource(time.Now().UnixNano()))
+		defCap        int                      = 1000000
+		defMapLike    map[K]V                  = make(map[K]V)
+		defSkipList   *skiplist.SkipList[K, V] = skiplist.New[K, V](compare)
+		defShuffleKey []K                      = make([]K, defCap)
+		defShuffleVal []V                      = make([]V, defCap)
+	)
+
+	for i := 0; i < defCap; i++ {
+		key, val := gen(i)
+
+		skiplist.Put(defSkipList, key, val)
+		defMapLike[key] = val
+
+		rndKey, rndVal := gen(rnd.Intn(defCap))
+		defShuffleKey[i] = rndKey
+		defShuffleVal[i] = rndVal
+	}
+
+	b.Run("PutTail", func(b *testing.B) {
+		list := skiplist.New[K, V](compare)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for n := 0; n < b.N; n++ {
+			key, val := gen(n)
+			skiplist.Put(list, key, val)
+		}
+	})
+
+	b.Run("PutHead", func(b *testing.B) {
+		list := skiplist.New[K, V](compare)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for n := b.N; n > 0; n-- {
+			key, val := gen(n)
+			skiplist.Put(list, key, val)
+		}
+	})
+
+	b.Run("PutRand", func(b *testing.B) {
+		list := skiplist.New[K, V](compare)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+		for n := 0; n < b.N; n++ {
+			key := defShuffleKey[n%defCap]
+			val := defShuffleVal[n%defCap]
+			skiplist.Put(list, key, val)
+		}
+	})
+
+	b.Run("GetRand", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for n := 0; n < b.N; n++ {
+			key := defShuffleKey[n%defCap]
+			val := defShuffleVal[n%defCap]
+			vxx := skiplist.Get(defSkipList, key)
+			if val != vxx {
+				panic(fmt.Errorf("invalid state for key %v, unexpected %v", key, val))
+			}
+		}
+	})
+
+	b.Run("GetRandMapLike", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for n := 0; n < b.N; n++ {
+			key := defShuffleKey[n%defCap]
+			val := defShuffleVal[n%defCap]
+			vxx := defMapLike[key]
+			if val != vxx {
+				panic(fmt.Errorf("invalid state for key %v, unexpected %v", key, val))
+			}
+		}
+	})
+
+}
+
+func TestSkipListIntString(t *testing.T) {
+	seed := map[int]string{}
+	for i := 1; i < 1000; i++ {
+		seed[i] = strconv.Itoa(i)
+	}
+
+	Suite(t, ord.Type[int](), seed)
+}
+
+func TestSkipListStringStringPtr(t *testing.T) {
+	seed := map[string]*string{}
+	for i := 1; i < 1000; i++ {
+		seed[strconv.Itoa(i)] = ptrOf(strconv.Itoa(i))
+	}
+
+	Suite(t, ord.Type[string](), seed)
+}
+
+func TestSkipListStringPtrStringPtr(t *testing.T) {
+	seed := map[*string]*string{}
+	for i := 1; i < 1000; i++ {
+		seed[ptrOf(strconv.Itoa(i))] = ptrOf(strconv.Itoa(i))
+	}
+
+	cmp := ord.From[*string](
+		func(a, b *string) int {
+			return ord.Type[string]().Compare(*a, *b)
+		},
+	)
+
+	Suite[*string](t, cmp, seed)
+}
+
+func ptrOf[T any](v T) *T { return &v }
+
+func BenchmarkSkipListIntString(b *testing.B) {
+	Bench(b,
+		ord.Type[int](),
+		func(i int) (int, string) {
+			return i, strconv.Itoa(i)
+		},
+	)
+}
