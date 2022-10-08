@@ -22,13 +22,13 @@ level 3 and so on.
 type tSkipNode[K, V any] struct {
 	key     K
 	val     V
-	fingers []*tSkipNode[K, V]
+	fingers [L]*tSkipNode[K, V]
 }
 
 func newSkipNode[K, V any](levels int) *tSkipNode[K, V] {
-	return &tSkipNode[K, V]{
-		fingers: make([]*tSkipNode[K, V], levels),
-	}
+	fingers := [L]*tSkipNode[K, V]{}
+	// make([]*tSkipNode[K, V], levels)
+	return &tSkipNode[K, V]{fingers: fingers}
 }
 
 func (node *tSkipNode[K, V]) String() string {

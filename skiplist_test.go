@@ -39,6 +39,13 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 		skiplist.Put(few, k, v)
 	}
 
+	t.Run("Length", func(t *testing.T) {
+		it.Then(t).
+			Should(it.Equal(skiplist.Length(nul), 0)).
+			Should(it.Equal(skiplist.Length(one), 1)).
+			Should(it.Equal(skiplist.Length(few), len(seed)))
+	})
+
 	t.Run("Put", func(t *testing.T) {
 		list := skiplist.New[K, V](ord)
 		for k, v := range seed {
@@ -74,13 +81,26 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 		}
 	})
 
+	t.Run("Values", func(t *testing.T) {
+		values := skiplist.Values(few)
+
+		i := -1
+		for values.Next() {
+			i++
+			k, v := values.Head()
+			it.Then(t).
+				Should(it.Equiv(k, keys[i])).
+				Should(it.Equiv(v, seed[k]))
+		}
+	})
+
 	t.Run("Split", func(t *testing.T) {
 		for _, at := range []int{0, len(keys) / 2, len(keys) - 1} {
 			key := keys[at]
 			before, after := skiplist.Split(few, key)
 
 			i := -1
-			for before.Tail() {
+			for before.Next() {
 				i++
 				k, _ := before.Head()
 
@@ -89,7 +109,7 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 			}
 
 			i = at - 1
-			for after.Tail() {
+			for after.Next() {
 				i++
 				k, _ := after.Head()
 
@@ -190,7 +210,7 @@ func TestSkipListIntString(t *testing.T) {
 		seed[i] = strconv.Itoa(i)
 	}
 
-	Suite(t, ord.Type[int](), seed)
+	Suite[int](t, ord.Int, seed)
 }
 
 func TestSkipListStringStringPtr(t *testing.T) {
@@ -199,7 +219,7 @@ func TestSkipListStringStringPtr(t *testing.T) {
 		seed[strconv.Itoa(i)] = ptrOf(strconv.Itoa(i))
 	}
 
-	Suite(t, ord.Type[string](), seed)
+	Suite[string](t, ord.String, seed)
 }
 
 func TestSkipListStringPtrStringPtr(t *testing.T) {
@@ -209,9 +229,7 @@ func TestSkipListStringPtrStringPtr(t *testing.T) {
 	}
 
 	cmp := ord.From[*string](
-		func(a, b *string) int {
-			return ord.Type[string]().Compare(*a, *b)
-		},
+		func(a, b *string) int { return ord.String.Compare(*a, *b) },
 	)
 
 	Suite[*string](t, cmp, seed)
@@ -222,8 +240,6 @@ func ptrOf[T any](v T) *T { return &v }
 func BenchmarkSkipListIntString(b *testing.B) {
 	Bench(b,
 		ord.Type[int](),
-		func(i int) (int, string) {
-			return i, strconv.Itoa(i)
-		},
+		func(i int) (int, int) { return i, i },
 	)
 }
