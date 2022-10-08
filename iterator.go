@@ -10,24 +10,26 @@ package skiplist
 
 import "github.com/fogfish/skiplist/ord"
 
-type Seq[K, V any] struct {
+type Iterator[K, V any] struct {
 	ord         ord.Ord[K]
 	node, until *tSkipNode[K, V]
 }
 
-func newSeq[K, V any](ord ord.Ord[K], node, until *tSkipNode[K, V]) *Seq[K, V] {
-	return &Seq[K, V]{
+func newIterator[K, V any](ord ord.Ord[K], node, until *tSkipNode[K, V]) *Iterator[K, V] {
+	return &Iterator[K, V]{
 		ord:   ord,
 		node:  node,
 		until: until,
 	}
 }
 
-func (seq *Seq[K, V]) Head() (K, V) {
+// Head element of the iterator
+func (seq *Iterator[K, V]) Head() (K, V) {
 	return seq.node.key, seq.node.val
 }
 
-func (seq *Seq[K, V]) Tail() bool {
+// Next element
+func (seq *Iterator[K, V]) Next() bool {
 	seq.node = seq.node.fingers[0]
 	if seq.until == nil {
 		return seq.node != nil
@@ -36,8 +38,9 @@ func (seq *Seq[K, V]) Tail() bool {
 	return seq.ord.Compare(seq.node.key, seq.until.key) == -1
 }
 
-func (seq *Seq[K, V]) FMap(f func(K, V) error) error {
-	for seq.Tail() {
+// FMap applies clojure on iterator
+func (seq *Iterator[K, V]) FMap(f func(K, V) error) error {
+	for seq.Next() {
 		if err := f(seq.Head()); err != nil {
 			return err
 		}
