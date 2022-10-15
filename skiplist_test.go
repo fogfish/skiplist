@@ -118,6 +118,26 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 			}
 		}
 	})
+
+	t.Run("Range", func(t *testing.T) {
+		for _, at := range [][]int{
+			{0, len(keys) / 4},
+			{len(keys) / 4, len(keys) / 2},
+			{len(keys) / 2, len(keys) - 1},
+		} {
+			from, to := keys[at[0]], keys[at[1]]
+			iter := skiplist.Range(few, from, to)
+
+			i := at[0] - 1
+			for iter.Next() {
+				i++
+				k, _ := iter.Head()
+
+				it.Then(t).
+					Should(it.Equiv(k, keys[i]))
+			}
+		}
+	})
 }
 
 //

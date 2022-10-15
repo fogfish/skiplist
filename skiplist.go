@@ -290,3 +290,27 @@ func Split[K, V any](list *SkipList[K, V], key K) (*Iterator[K, V], *Iterator[K,
 
 	return head, tail
 }
+
+/*
+
+Range iterates the list on the inclusive range [from, to]
+*/
+func Range[K, V any](list *SkipList[K, V], from, to K) *Iterator[K, V] {
+	v, p := skip(list, from)
+
+	if v == nil {
+		return nil
+	}
+
+	iter := newIterator[K](inclusiveRange[K]{list.ord}, p[0], &tSkipNode[K, V]{key: to})
+	return iter
+}
+
+type inclusiveRange[K any] struct{ ord.Ord[K] }
+
+func (inclusive inclusiveRange[K]) Compare(a, b K) int {
+	if inclusive.Ord.Compare(a, b) != 1 {
+		return -1
+	}
+	return 1
+}
