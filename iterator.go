@@ -35,7 +35,7 @@ func (seq *Iterator[K, V]) Next() bool {
 		return seq.node != nil
 	}
 
-	return seq.ord.Compare(seq.node.key, seq.until.key) == -1
+	return seq.node != nil && seq.ord.Compare(seq.node.key, seq.until.key) == -1
 }
 
 // FMap applies clojure on iterator
