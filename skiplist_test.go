@@ -99,6 +99,20 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 		}
 	})
 
+	t.Run("ValuesFMap", func(t *testing.T) {
+		values := skiplist.Values(few)
+
+		i := -1
+		values.FMap(func(k K, v V) error {
+			i++
+			it.Then(t).
+				Should(it.Equiv(k, keys[i])).
+				Should(it.Equiv(v, seed[k]))
+
+			return nil
+		})
+	})
+
 	t.Run("Split", func(t *testing.T) {
 		for _, at := range []int{0, len(keys) / 2, len(keys) - 1} {
 			key := keys[at]
@@ -263,8 +277,18 @@ func TestSkipListStringPtrStringPtr(t *testing.T) {
 func ptrOf[T any](v T) *T { return &v }
 
 func BenchmarkSkipListIntString(b *testing.B) {
-	Bench(b,
-		ord.Type[int](),
+	Bench[int](b,
+		ord.Int,
 		func(i int) (int, int) { return i, i },
 	)
 }
+
+// func BenchmarkSkipListStringString(b *testing.B) {
+// 	Bench[string](b,
+// 		ord.String,
+// 		func(i int) (string, string) {
+// 			s := strconv.Itoa(i)
+// 			return s, s
+// 		},
+// 	)
+// }

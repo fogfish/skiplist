@@ -162,11 +162,11 @@ func skip[K, V any](list *SkipList[K, V], key K) (*tSkipNode[K, V], [L]*tSkipNod
 	path := list.path
 
 	node := list.head
-	next := node.fingers
+	next := &node.fingers
 	for level := L - 1; level >= 0; level-- {
 		for next[level] != nil && list.ord.Compare(next[level].key, key) == -1 {
 			node = node.fingers[level]
-			next = node.fingers
+			next = &node.fingers
 		}
 		path[level] = node
 	}
@@ -233,11 +233,11 @@ the desired element (if it is in the list).
 */
 func search[K, V any](list *SkipList[K, V], key K) *tSkipNode[K, V] {
 	node := list.head
-	next := list.head.fingers
+	next := &list.head.fingers
 	for level := L - 1; level >= 0; level-- {
 		for next[level] != nil && list.ord.Compare(next[level].key, key) == -1 {
 			node = node.fingers[level]
-			next = node.fingers
+			next = &node.fingers
 		}
 	}
 

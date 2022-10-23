@@ -27,7 +27,6 @@ type tSkipNode[K, V any] struct {
 
 func newSkipNode[K, V any](levels int) *tSkipNode[K, V] {
 	fingers := [L]*tSkipNode[K, V]{}
-	// make([]*tSkipNode[K, V], levels)
 	return &tSkipNode[K, V]{fingers: fingers}
 }
 
