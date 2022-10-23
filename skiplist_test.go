@@ -263,8 +263,18 @@ func TestSkipListStringPtrStringPtr(t *testing.T) {
 func ptrOf[T any](v T) *T { return &v }
 
 func BenchmarkSkipListIntString(b *testing.B) {
-	Bench(b,
-		ord.Type[int](),
+	Bench[int](b,
+		ord.Int,
 		func(i int) (int, int) { return i, i },
 	)
 }
+
+// func BenchmarkSkipListStringString(b *testing.B) {
+// 	Bench[string](b,
+// 		ord.String,
+// 		func(i int) (string, string) {
+// 			s := strconv.Itoa(i)
+// 			return s, s
+// 		},
+// 	)
+// }
