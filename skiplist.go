@@ -12,6 +12,7 @@ Package skiplist implements a probabilistic list-based data structure
 that are a simple and efficient substitute for balanced trees.
 
 Please see the article that depicts the data structure
+https://15721.courses.cs.cmu.edu/spring2018/papers/08-oltpindexes1/pugh-skiplists-cacm1990.pdf
 http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.17.524
 */
 package skiplist
@@ -19,7 +20,6 @@ package skiplist
 import (
 	"bytes"
 	"fmt"
-	"math"
 	"math/rand"
 	"time"
 
@@ -34,6 +34,12 @@ The value is estimated as math.Log10(float64(n)) / math.Log10(1/p)
 n = 4294967296, p = 1/math.E
 */
 const L = 22
+
+/*
+
+The probability table is generated for L=22
+*/
+var probabilityTable []float64 = []float64{1, 0.36787944117144233, 0.1353352832366127, 0.04978706836786395, 0.018315638888734182, 0.006737946999085468, 0.002478752176666359, 0.0009118819655545165, 0.0003354626279025119, 0.0001234098040866796, 4.539992976248486e-05, 1.6701700790245666e-05, 6.1442123533282115e-06, 2.260329406981055e-06, 8.315287191035682e-07, 3.0590232050182594e-07, 1.1253517471925916e-07, 4.139937718785168e-08, 1.5229979744712636e-08, 5.60279643753727e-09, 2.0611536224385587e-09, 7.582560427911911e-10, 0}
 
 /*
 
@@ -53,10 +59,6 @@ type SkipList[K, V any] struct {
 	//
 	// random generator
 	random rand.Source
-
-	//
-	// probability table to determine node level
-	p []float64
 
 	//
 	// buffer to estimate the skip path during insert / remove
@@ -83,16 +85,21 @@ func (list *SkipList[K, V]) String() string {
 
 New create instance of SkipList
 */
-func New[K, V any](ord ord.Ord[K]) *SkipList[K, V] {
-	ptable := probability(4294967296, 1/math.E)
-	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+func New[K, V any](ord ord.Ord[K], random ...rand.Source) *SkipList[K, V] {
+	// ptable := probability(1<<32, 1/math.E)
+
+	var rnd rand.Source
+	if len(random) == 0 {
+		rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
+	} else {
+		rnd = random[0]
+	}
 
 	return &SkipList[K, V]{
 		ord:    ord,
 		head:   newSkipNode[K, V](L),
 		length: 0,
-		random: random,
-		p:      ptable,
+		random: rnd,
 		path:   [L]*tSkipNode[K, V]{},
 	}
 }
@@ -101,16 +108,16 @@ func New[K, V any](ord ord.Ord[K]) *SkipList[K, V] {
 
 calculates probability table
 */
-func probability(n int, p float64) []float64 {
-	// level := int(math.Log10(float64(n)) / math.Log10(1/p))
-	table := make([]float64, L+1)
+// func probability(n int, p float64) []float64 {
+// 	// level := int(math.Log10(float64(n)) / math.Log10(1/p))
+// 	table := make([]float64, L+1)
 
-	for i := 1; i <= L; i++ {
-		table[i-1] = math.Pow(p, float64(i-1))
-	}
+// 	for i := 1; i <= L; i++ {
+// 		table[i-1] = math.Pow(p, float64(i-1))
+// 	}
 
-	return /*level,*/ table
-}
+// 	return /*level,*/ table
+// }
 
 /*
 
@@ -176,7 +183,7 @@ func mkNode[K, V any](list *SkipList[K, V], key K, val V) (int, *tSkipNode[K, V]
 	p := float64(list.random.Int63()) / (1 << 63)
 
 	level := 0
-	for level < L && p < list.p[level] {
+	for level < L && p < probabilityTable[level] {
 		level++
 	}
 
