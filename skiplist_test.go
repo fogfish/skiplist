@@ -29,7 +29,7 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 	}
 	sort.Slice(keys, func(i, j int) bool { return ord.Compare(keys[i], keys[j]) == -1 })
 
-	nul := skiplist.New[K, V](ord)
+	nul := skiplist.New[K, V](ord, rand.NewSource(0))
 
 	one := skiplist.New[K, V](ord)
 	skiplist.Put(one, keys[0], seed[keys[0]])
@@ -38,6 +38,11 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 	for k, v := range seed {
 		skiplist.Put(few, k, v)
 	}
+
+	t.Run("String", func(t *testing.T) {
+		it.Then(t).
+			ShouldNot(it.Equal(len(one.String()), 0))
+	})
 
 	t.Run("Length", func(t *testing.T) {
 		it.Then(t).
