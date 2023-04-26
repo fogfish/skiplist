@@ -310,6 +310,10 @@ func Slice[K, V any](list *SkipList[K, V], key K, n int) *Iterator[K, V] {
 	v, p := skip(list, key)
 
 	for i := 0; i < n; i++ {
+		if v.fingers[0] == nil {
+			break
+		}
+
 		v = v.fingers[0]
 	}
 

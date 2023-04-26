@@ -160,13 +160,15 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 	t.Run("Slice", func(t *testing.T) {
 		for _, at := range [][]int{
 			{0, len(keys) / 4},
-			{len(keys) / 4, len(keys) / 2},
-			{len(keys) / 2, len(keys) - 1},
-			{len(keys) / 4, len(keys)/4 + 1},
-			{len(keys) / 2, len(keys)/2 + 1},
+			{len(keys) / 4, len(keys) / 4},
+			{len(keys) / 2, len(keys) / 2},
+			{0, 1},
+			{len(keys) / 4, 1},
+			{len(keys) / 2, 1},
+			{len(keys) - 1, 1},
 		} {
 			key := keys[at[0]]
-			n := at[1] - at[1]
+			n := at[1]
 			iter := skiplist.Slice(few, key, n)
 
 			i := at[0] - 1
