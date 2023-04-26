@@ -7,7 +7,6 @@
 //
 
 /*
-
 Package skiplist implements a probabilistic list-based data structure
 that are a simple and efficient substitute for balanced trees.
 
@@ -27,7 +26,6 @@ import (
 )
 
 /*
-
 L depth of fingers at each node.
 
 The value is estimated as math.Log10(float64(n)) / math.Log10(1/p)
@@ -36,13 +34,11 @@ n = 4294967296, p = 1/math.E
 const L = 22
 
 /*
-
 The probability table is generated for L=22
 */
 var probabilityTable []float64 = []float64{1, 0.36787944117144233, 0.1353352832366127, 0.04978706836786395, 0.018315638888734182, 0.006737946999085468, 0.002478752176666359, 0.0009118819655545165, 0.0003354626279025119, 0.0001234098040866796, 4.539992976248486e-05, 1.6701700790245666e-05, 6.1442123533282115e-06, 2.260329406981055e-06, 8.315287191035682e-07, 3.0590232050182594e-07, 1.1253517471925916e-07, 4.139937718785168e-08, 1.5229979744712636e-08, 5.60279643753727e-09, 2.0611536224385587e-09, 7.582560427911911e-10, 0}
 
 /*
-
 SkipList data structure
 */
 type SkipList[K, V any] struct {
@@ -82,7 +78,6 @@ func (list *SkipList[K, V]) String() string {
 }
 
 /*
-
 New create instance of SkipList
 */
 func New[K, V any](ord ord.Ord[K], random ...rand.Source) *SkipList[K, V] {
@@ -120,7 +115,6 @@ calculates probability table
 // }
 
 /*
-
 Length number of elements in data structure
 */
 func Length[K, V any](list *SkipList[K, V]) int {
@@ -128,7 +122,6 @@ func Length[K, V any](list *SkipList[K, V]) int {
 }
 
 /*
-
 Put insert the element into the list
 */
 func Put[K, V any](list *SkipList[K, V], key K, val V) *SkipList[K, V] {
@@ -152,7 +145,6 @@ func Put[K, V any](list *SkipList[K, V], key K, val V) *SkipList[K, V] {
 }
 
 /*
-
 skip algorithm is similar to search algorithm that traversing forward pointers.
 skip maintain the vector path that contains a pointer to the rightmost node
 of level i or higher that is to the left of the location of the
@@ -175,7 +167,6 @@ func skip[K, V any](list *SkipList[K, V], key K) (*tSkipNode[K, V], [L]*tSkipNod
 }
 
 /*
-
 mkNode creates a new node, randomly defines empty fingers (level of the node)
 */
 func mkNode[K, V any](list *SkipList[K, V], key K, val V) (int, *tSkipNode[K, V]) {
@@ -197,7 +188,6 @@ func mkNode[K, V any](list *SkipList[K, V], key K, val V) (int, *tSkipNode[K, V]
 }
 
 /*
-
 Get looks up the element in the list
 */
 func Get[K, V any](list *SkipList[K, V], key K) V {
@@ -209,7 +199,6 @@ func Get[K, V any](list *SkipList[K, V], key K) V {
 }
 
 /*
-
 Lookup the element in the list, return bool flag
 */
 func Lookup[K, V any](list *SkipList[K, V], key K) (V, bool) {
@@ -223,7 +212,6 @@ func Lookup[K, V any](list *SkipList[K, V], key K) (V, bool) {
 }
 
 /*
-
 search algorithm traversing forward pointers that do not jumps over the node
 containing the element (for each level the finger shall be less than key).
 When no more progress can be made at the current level of forward pointers,
@@ -245,7 +233,6 @@ func search[K, V any](list *SkipList[K, V], key K) *tSkipNode[K, V] {
 }
 
 /*
-
 Remove element from the list
 */
 func Remove[K, V any](list *SkipList[K, V], key K) V {
@@ -270,7 +257,6 @@ func Remove[K, V any](list *SkipList[K, V], key K) V {
 }
 
 /*
-
 Values return all values from the list
 */
 func Values[K, V any](list *SkipList[K, V]) *Iterator[K, V] {
@@ -278,7 +264,6 @@ func Values[K, V any](list *SkipList[K, V]) *Iterator[K, V] {
 }
 
 /*
-
 Split the list
 */
 func Split[K, V any](list *SkipList[K, V], key K) (*Iterator[K, V], *Iterator[K, V]) {
@@ -299,7 +284,6 @@ func Split[K, V any](list *SkipList[K, V], key K) (*Iterator[K, V], *Iterator[K,
 }
 
 /*
-
 Range iterates the list on the inclusive range [from, to]
 */
 func Range[K, V any](list *SkipList[K, V], from, to K) *Iterator[K, V] {
@@ -320,4 +304,15 @@ func (inclusive inclusiveRange[K]) Compare(a, b K) int {
 		return -1
 	}
 	return 1
+}
+
+func Slice[K, V any](list *SkipList[K, V], key K, n int) *Iterator[K, V] {
+	v, p := skip(list, key)
+
+	for i := 0; i < n; i++ {
+		v = v.fingers[0]
+	}
+
+	iter := newIterator(list.ord, p[0], &tSkipNode[K, V]{key: v.key})
+	return iter
 }

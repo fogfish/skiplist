@@ -21,7 +21,6 @@ import (
 	"github.com/fogfish/skiplist/ord"
 )
 
-//
 func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 	keys := make([]K, 0, len(seed))
 	for k := range seed {
@@ -157,9 +156,31 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 			}
 		}
 	})
+
+	t.Run("Slice", func(t *testing.T) {
+		for _, at := range [][]int{
+			{0, len(keys) / 4},
+			{len(keys) / 4, len(keys) / 2},
+			{len(keys) / 2, len(keys) - 1},
+			{len(keys) / 4, len(keys)/4 + 1},
+			{len(keys) / 2, len(keys)/2 + 1},
+		} {
+			key := keys[at[0]]
+			n := at[1] - at[1]
+			iter := skiplist.Slice(few, key, n)
+
+			i := at[0] - 1
+			for iter.Next() {
+				i++
+				k, _ := iter.Head()
+
+				it.Then(t).
+					Should(it.Equiv(k, keys[i]))
+			}
+		}
+	})
 }
 
-//
 func Bench[K, V comparable](b *testing.B, compare ord.Ord[K], gen func(int) (K, V)) {
 	var (
 		rnd                                    = rand.New(rand.NewSource(time.Now().UnixNano()))
