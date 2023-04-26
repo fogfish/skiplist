@@ -309,6 +309,10 @@ func (inclusive inclusiveRange[K]) Compare(a, b K) int {
 func Slice[K, V any](list *SkipList[K, V], key K, n int) *Iterator[K, V] {
 	v, p := skip(list, key)
 
+	if v == nil || list.ord.Compare(v.key, key) != 0 {
+		return nil
+	}
+
 	for i := 0; i < n; i++ {
 		if v.fingers[0] == nil {
 			break
