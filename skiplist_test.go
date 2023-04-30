@@ -181,6 +181,30 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 			}
 		}
 	})
+
+	t.Run("Remove", func(t *testing.T) {
+		key := keys[0]
+		val0 := skiplist.Remove(nul, key)
+		val1 := skiplist.Get(nul, key)
+		it.Then(t).Should(
+			it.Equiv(val0, *new(V)),
+			it.Equiv(val1, *new(V)),
+		)
+
+		val0 = skiplist.Remove(one, key)
+		val1 = skiplist.Get(one, key)
+		it.Then(t).Should(
+			it.Equiv(val0, seed[key]),
+			it.Equiv(val1, *new(V)),
+		)
+
+		val0 = skiplist.Remove(few, key)
+		val1 = skiplist.Get(few, key)
+		it.Then(t).Should(
+			it.Equiv(val0, seed[key]),
+			it.Equiv(val1, *new(V)),
+		)
+	})
 }
 
 func Bench[K, V comparable](b *testing.B, compare ord.Ord[K], gen func(int) (K, V)) {
