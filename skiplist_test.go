@@ -21,7 +21,6 @@ import (
 	"github.com/fogfish/skiplist/ord"
 )
 
-//
 func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 	keys := make([]K, 0, len(seed))
 	for k := range seed {
@@ -157,9 +156,57 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 			}
 		}
 	})
+
+	t.Run("Slice", func(t *testing.T) {
+		for _, at := range [][]int{
+			{0, len(keys) / 4},
+			{len(keys) / 4, len(keys) / 4},
+			{len(keys) / 2, len(keys) / 2},
+			{0, 1},
+			{len(keys) / 4, 1},
+			{len(keys) / 2, 1},
+			{len(keys) - 1, 1},
+		} {
+			key := keys[at[0]]
+			n := at[1]
+			iter := skiplist.Slice(few, key, n)
+
+			i := at[0] - 1
+			for iter.Next() {
+				i++
+				k, _ := iter.Head()
+
+				it.Then(t).
+					Should(it.Equiv(k, keys[i]))
+			}
+		}
+	})
+
+	t.Run("Remove", func(t *testing.T) {
+		key := keys[0]
+		val0 := skiplist.Remove(nul, key)
+		val1 := skiplist.Get(nul, key)
+		it.Then(t).Should(
+			it.Equiv(val0, *new(V)),
+			it.Equiv(val1, *new(V)),
+		)
+
+		val0 = skiplist.Remove(one, key)
+		val1 = skiplist.Get(one, key)
+		it.Then(t).Should(
+			it.Equiv(val0, seed[key]),
+			it.Equiv(val1, *new(V)),
+		)
+
+		val0 = skiplist.Remove(few, key)
+		val1 = skiplist.Get(few, key)
+		it.Then(t).Should(
+			it.Equiv(val0, seed[key]),
+			it.Equiv(val1, *new(V)),
+		)
+	})
 }
 
-//
 func Bench[K, V comparable](b *testing.B, compare ord.Ord[K], gen func(int) (K, V)) {
 	var (
 		rnd                                    = rand.New(rand.NewSource(time.Now().UnixNano()))
