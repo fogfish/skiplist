@@ -275,7 +275,7 @@ func (inclusive inclusiveRange[K]) Compare(a, b K) int {
 }
 
 // Extract n elements after the key.
-// It returns empty iterator
+// It returns empty iterator if key do not exists.
 func Slice[K, V any](list *SkipList[K, V], key K, n int) *Iterator[K, V] {
 	v, p := skip(list, key)
 
