@@ -8,7 +8,9 @@
 
 package skiplist
 
-import "github.com/fogfish/skiplist/ord"
+import (
+	"github.com/fogfish/skiplist/ord"
+)
 
 type Iterator[K, V any] struct {
 	ord         ord.Ord[K]
