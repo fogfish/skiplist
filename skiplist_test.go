@@ -243,7 +243,14 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 	})
 
 	t.Run("Map", func(t *testing.T) {
-		seq := toSeq(skiplist.Map(few.Head().Seq(), func(k K, v V) K { return k }))
+		seq := make([]K, 0)
+		itr := skiplist.Map(few.Head().Seq(), func(k K, v V) K { return k })
+
+		for has := itr != nil; has; has = itr.Next() {
+			_, v := itr.KeyValue()
+			seq = append(seq, v)
+		}
+
 		it.Then(t).Should(
 			it.Seq(seq).Equal(keys...),
 		)
