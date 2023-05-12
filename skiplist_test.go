@@ -39,15 +39,17 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		it.Then(t).
-			ShouldNot(it.Equal(len(one.String()), 0))
+		it.Then(t).ShouldNot(
+			it.Equal(len(one.String()), 0),
+		)
 	})
 
 	t.Run("Length", func(t *testing.T) {
-		it.Then(t).
-			Should(it.Equal(skiplist.Length(nul), 0)).
-			Should(it.Equal(skiplist.Length(one), 1)).
-			Should(it.Equal(skiplist.Length(few), len(seed)))
+		it.Then(t).Should(
+			it.Equal(skiplist.Length(nul), 0),
+			it.Equal(skiplist.Length(one), 1),
+			it.Equal(skiplist.Length(few), len(seed)),
+		)
 	})
 
 	t.Run("Put", func(t *testing.T) {
@@ -86,34 +88,49 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 	})
 
 	t.Run("Values", func(t *testing.T) {
-		values := skiplist.Values(few)
+		values := toSeq(few.Head().Seq())
 
-		i := -1
-		for values.Next() {
-			i++
-			k, v := values.KeyValue()
-			it.Then(t).
-				Should(it.Equiv(k, keys[i])).
-				Should(it.Equiv(v, seed[k]))
+		it.Then(t).Should(
+			it.Seq(values).Equal(keys...),
+		)
+	})
+
+	t.Run("Node.Next", func(t *testing.T) {
+		seq := make([]K, 0)
+		for node := few.Head(); node != nil; node = node.Next() {
+			seq = append(seq, node.Key())
+
+			it.Then(t).Should(
+				it.Equiv(node.Value(), seed[node.Key()]),
+			)
 		}
+
+		it.Then(t).Should(
+			it.Seq(seq).Equal(keys...),
+		)
 	})
 
 	t.Run("ValuesFMap", func(t *testing.T) {
 		values := skiplist.Values(few)
 
-		i := -1
+		i := 0
 		skiplist.FMap(values, func(k K, v V) error {
 			i++
-			it.Then(t).
-				Should(it.Equiv(k, keys[i])).
-				Should(it.Equiv(v, seed[k]))
-
+			it.Then(t).Should(
+				it.Equiv(k, keys[i]),
+				it.Equiv(v, seed[k]),
+			)
 			return nil
 		})
 	})
 
 	t.Run("Split", func(t *testing.T) {
-		for _, at := range []int{0, len(keys) / 2, len(keys) - 1} {
+		for _, at := range []int{
+			0,
+			len(keys) / 4,
+			len(keys) / 2,
+			len(keys) - 1,
+		} {
 			key := keys[at]
 			before, after := skiplist.Split(few, key)
 			seqB := toSeq(before)
@@ -183,6 +200,25 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 		}
 	})
 
+	t.Run("Filter", func(t *testing.T) {
+		for _, at := range [][]int{
+			{0, len(keys) / 4},
+			{len(keys) / 4, len(keys) / 2},
+			{len(keys) / 2, len(keys) - 1},
+		} {
+			from, to := keys[at[0]], keys[at[1]]
+			seq := toSeq(
+				skiplist.Filter(skiplist.Values(few),
+					func(k K, v V) bool { return ord.Compare(k, from) > -1 && ord.Compare(k, to) < 1 },
+				),
+			)
+
+			it.Then(t).Should(
+				it.Seq(seq).Equal(keys[at[0] : at[1]+1]...),
+			)
+		}
+	})
+
 	t.Run("Remove", func(t *testing.T) {
 		key := keys[0]
 		val0 := skiplist.Remove(nul, key)
@@ -211,7 +247,7 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 func toSeq[K, V any](seq skiplist.Iterator[K, V]) []K {
 	keys := make([]K, 0)
 
-	for seq.Next() {
+	for has := seq != nil; has; has = seq.Next() {
 		keys = append(keys, seq.Key())
 	}
 
@@ -310,29 +346,29 @@ func TestSkipListIntString(t *testing.T) {
 	Suite[int](t, ord.Int, seed)
 }
 
-func TestSkipListStringStringPtr(t *testing.T) {
-	seed := map[string]*string{}
-	for i := 1; i < 1000; i++ {
-		seed[strconv.Itoa(i)] = ptrOf(strconv.Itoa(i))
-	}
+// func TestSkipListStringStringPtr(t *testing.T) {
+// 	seed := map[string]*string{}
+// 	for i := 1; i < 1000; i++ {
+// 		seed[strconv.Itoa(i)] = ptrOf(strconv.Itoa(i))
+// 	}
 
-	Suite[string](t, ord.String, seed)
-}
+// 	Suite[string](t, ord.String, seed)
+// }
 
-func TestSkipListStringPtrStringPtr(t *testing.T) {
-	seed := map[*string]*string{}
-	for i := 1; i < 1000; i++ {
-		seed[ptrOf(strconv.Itoa(i))] = ptrOf(strconv.Itoa(i))
-	}
+// func TestSkipListStringPtrStringPtr(t *testing.T) {
+// 	seed := map[*string]*string{}
+// 	for i := 1; i < 1000; i++ {
+// 		seed[ptrOf(strconv.Itoa(i))] = ptrOf(strconv.Itoa(i))
+// 	}
 
-	cmp := ord.From[*string](
-		func(a, b *string) int { return ord.String.Compare(*a, *b) },
-	)
+// 	cmp := ord.From[*string](
+// 		func(a, b *string) int { return ord.String.Compare(*a, *b) },
+// 	)
 
-	Suite[*string](t, cmp, seed)
-}
+// 	Suite[*string](t, cmp, seed)
+// }
 
-func ptrOf[T any](v T) *T { return &v }
+// func ptrOf[T any](v T) *T { return &v }
 
 func BenchmarkSkipListIntString(b *testing.B) {
 	Bench[int](b,

@@ -260,7 +260,7 @@ func Remove[K, V any](list *SkipList[K, V], key K) V {
 
 // Values return all values from the list
 func Values[K, V any](list *SkipList[K, V]) Iterator[K, V] {
-	return newIterator(list.head)
+	return newIterator(list.Head())
 }
 
 // Split the list before and after the key.
@@ -268,31 +268,31 @@ func Values[K, V any](list *SkipList[K, V]) Iterator[K, V] {
 func Split[K, V any](list *SkipList[K, V], key K) (Iterator[K, V], Iterator[K, V]) {
 	v, p := skip(list, key)
 
-	head := TakeWhile(newIterator(p[L-1]),
+	if v == nil {
+		return list.Head().Seq(), nil
+	}
+
+	if p[0] == p[L-1] {
+		return nil, list.Head().Seq()
+	}
+
+	head := TakeWhile(list.Head().Seq(),
 		func(k K, v V) bool { return list.ord.Compare(k, key) == -1 },
 	)
-	tail := newIterator(p[0])
-
-	if v == nil {
-		return head, nil
-	}
-
-	if p[0] == p[L-1] && list.ord.Compare(v.key, key) != 0 {
-		return nil, tail
-	}
+	tail := newIterator(v)
 
 	return head, tail
 }
 
 // Extract inclusive range of the list on [from, to] interval
 func Range[K, V any](list *SkipList[K, V], from, to K) Iterator[K, V] {
-	v, p := skip(list, from)
+	v, _ := skip(list, from)
 
 	if v == nil {
 		return nil
 	}
 
-	return TakeWhile(newIterator(p[0]),
+	return TakeWhile(newIterator(v),
 		func(k K, v V) bool { return list.ord.Compare(k, to) != 1 },
 	)
 }

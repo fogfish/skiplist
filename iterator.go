@@ -8,7 +8,13 @@
 
 package skiplist
 
-// Iterator over Skip List nodes
+// Iterator over Skip List nodes.
+// Newly created iterator holds the first element in sequence,
+// consume it with KeyValue(), forward with Next()
+//
+//	for has := seq != nil; has; has = seq.Next() {
+//		seq.KeyValue()
+//	}
 type Iterator[K, V any] interface {
 	Key() K
 	Value() V
@@ -32,6 +38,10 @@ func (seq *iterator[K, V]) Next() bool {
 
 // Take values from iterator while predicate function true
 func TakeWhile[K, V any](seq Iterator[K, V], f func(K, V) bool) Iterator[K, V] {
+	if seq == nil || !f(seq.KeyValue()) {
+		return nil
+	}
+
 	return &takeWhile[K, V]{
 		Iterator: seq,
 		f:        f,
@@ -62,43 +72,30 @@ func (seq *takeWhile[K, V]) Next() bool {
 
 // Drop values from iterator while predicate function true
 func DropWhile[K, V any](seq Iterator[K, V], f func(K, V) bool) Iterator[K, V] {
-	return &dropWhile[K, V]{
-		Iterator: seq,
-		f:        f,
-	}
-}
-
-type dropWhile[K, V any] struct {
-	Iterator[K, V]
-	f func(K, V) bool
-}
-
-func (seq *dropWhile[K, V]) Next() bool {
-	if seq.Iterator == nil {
-		return false
-	}
-
-	if seq.f == nil {
-		return seq.Iterator.Next()
-	}
-
 	for {
-		if !seq.Iterator.Next() {
-			return false
+		if !f(seq.KeyValue()) {
+			return seq
 		}
 
-		if !seq.f(seq.KeyValue()) {
-			seq.f = nil
-			return true
+		if !seq.Next() {
+			return nil
 		}
 	}
 }
 
 // Filter values from iterator
 func Filter[K, V any](seq Iterator[K, V], f func(K, V) bool) Iterator[K, V] {
-	return filter[K, V]{
-		Iterator: seq,
-		f:        f,
+	for {
+		if f(seq.KeyValue()) {
+			return filter[K, V]{
+				Iterator: seq,
+				f:        f,
+			}
+		}
+
+		if !seq.Next() {
+			return nil
+		}
 	}
 }
 
@@ -117,7 +114,7 @@ func (seq filter[K, V]) Next() bool {
 			return false
 		}
 
-		if !seq.f(seq.KeyValue()) {
+		if seq.f(seq.KeyValue()) {
 			return true
 		}
 	}

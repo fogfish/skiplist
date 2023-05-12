@@ -67,10 +67,17 @@ func main() {
 	)
 	show(d)
 
-	//
+	// Range
 	fmt.Println("\n==> take range [35, 60]")
 	e := skiplist.Range(list, 35, 60)
 	show(e)
+
+	// Filter
+	fmt.Println("\n==> filter")
+	f := skiplist.Filter(skiplist.Values(list),
+		func(k int, v string) bool { return len(v) > 2 },
+	)
+	show(f)
 
 	// Remove values
 	skiplist.Remove(list, 40)
