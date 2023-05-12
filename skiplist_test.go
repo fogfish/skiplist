@@ -87,6 +87,29 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 		}
 	})
 
+	t.Run("Lookup", func(t *testing.T) {
+		for _, at := range []int{
+			0,
+			len(keys) / 4,
+			len(keys) / 2,
+			len(keys) - 1,
+		} {
+			key := keys[at]
+			node := skiplist.Lookup(few, key)
+			before := skiplist.LookupBefore(few, key)
+			after := skiplist.LookupAfter(few, key)
+
+			it.Then(t).Should(
+				it.Equal(node.Key(), key),
+				it.Equiv(node.Value(), seed[key]),
+				it.Equal(before.Key(), key),
+				it.Equiv(before.Value(), seed[key]),
+				it.Equal(after.Key(), key),
+				it.Equiv(after.Value(), seed[key]),
+			)
+		}
+	})
+
 	t.Run("Values", func(t *testing.T) {
 		values := toSeq(few.Head().Seq())
 
@@ -353,29 +376,29 @@ func TestSkipListIntString(t *testing.T) {
 	Suite[int](t, ord.Int, seed)
 }
 
-// func TestSkipListStringStringPtr(t *testing.T) {
-// 	seed := map[string]*string{}
-// 	for i := 1; i < 1000; i++ {
-// 		seed[strconv.Itoa(i)] = ptrOf(strconv.Itoa(i))
-// 	}
+func TestSkipListStringStringPtr(t *testing.T) {
+	seed := map[string]*string{}
+	for i := 1; i < 1000; i++ {
+		seed[strconv.Itoa(i)] = ptrOf(strconv.Itoa(i))
+	}
 
-// 	Suite[string](t, ord.String, seed)
-// }
+	Suite[string](t, ord.String, seed)
+}
 
-// func TestSkipListStringPtrStringPtr(t *testing.T) {
-// 	seed := map[*string]*string{}
-// 	for i := 1; i < 1000; i++ {
-// 		seed[ptrOf(strconv.Itoa(i))] = ptrOf(strconv.Itoa(i))
-// 	}
+func TestSkipListStringPtrStringPtr(t *testing.T) {
+	seed := map[*string]*string{}
+	for i := 1; i < 1000; i++ {
+		seed[ptrOf(strconv.Itoa(i))] = ptrOf(strconv.Itoa(i))
+	}
 
-// 	cmp := ord.From[*string](
-// 		func(a, b *string) int { return ord.String.Compare(*a, *b) },
-// 	)
+	cmp := ord.From[*string](
+		func(a, b *string) int { return ord.String.Compare(*a, *b) },
+	)
 
-// 	Suite[*string](t, cmp, seed)
-// }
+	Suite[*string](t, cmp, seed)
+}
 
-// func ptrOf[T any](v T) *T { return &v }
+func ptrOf[T any](v T) *T { return &v }
 
 func BenchmarkSkipListIntString(b *testing.B) {
 	Bench[int](b,
