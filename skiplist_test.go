@@ -116,24 +116,13 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 		for _, at := range []int{0, len(keys) / 2, len(keys) - 1} {
 			key := keys[at]
 			before, after := skiplist.Split(few, key)
+			seqB := toSeq(before)
+			seqA := toSeq(after)
 
-			i := -1
-			for before.Next() {
-				i++
-				k, _ := before.KeyValue()
-
-				it.Then(t).
-					Should(it.Equiv(k, keys[i]))
-			}
-
-			i = at - 1
-			for after.Next() {
-				i++
-				k, _ := after.KeyValue()
-
-				it.Then(t).
-					Should(it.Equiv(k, keys[i]))
-			}
+			it.Then(t).Should(
+				it.Seq(seqB).Equal(keys[:at]...),
+				it.Seq(seqA).Equal(keys[at:]...),
+			)
 		}
 	})
 
@@ -144,16 +133,53 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 			{len(keys) / 2, len(keys) - 1},
 		} {
 			from, to := keys[at[0]], keys[at[1]]
-			iter := skiplist.Range(few, from, to)
+			seq := toSeq(
+				skiplist.Range(few, from, to),
+			)
 
-			i := at[0] - 1
-			for iter.Next() {
-				i++
-				k, _ := iter.KeyValue()
+			it.Then(t).Should(
+				it.Seq(seq).Equal(keys[at[0] : at[1]+1]...),
+			)
+		}
+	})
 
-				it.Then(t).
-					Should(it.Equiv(k, keys[i]))
-			}
+	t.Run("TakeWhile", func(t *testing.T) {
+		for _, at := range []int{
+			0,
+			1,
+			len(keys) / 4,
+			len(keys) / 2,
+			len(keys) - 1,
+		} {
+			seq := toSeq(
+				skiplist.TakeWhile(skiplist.Values(few),
+					func(k K, v V) bool { return ord.Compare(k, keys[at]) == -1 },
+				),
+			)
+
+			it.Then(t).Should(
+				it.Seq(seq).Equal(keys[:at]...),
+			)
+		}
+	})
+
+	t.Run("DropWhile", func(t *testing.T) {
+		for _, at := range []int{
+			0,
+			1,
+			len(keys) / 4,
+			len(keys) / 2,
+			len(keys) - 1,
+		} {
+			seq := toSeq(
+				skiplist.DropWhile(skiplist.Values(few),
+					func(k K, v V) bool { return ord.Compare(k, keys[at]) == -1 },
+				),
+			)
+
+			it.Then(t).Should(
+				it.Seq(seq).Equal(keys[at:]...),
+			)
 		}
 	})
 
@@ -180,6 +206,16 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 			it.Equiv(val1, *new(V)),
 		)
 	})
+}
+
+func toSeq[K, V any](seq skiplist.Iterator[K, V]) []K {
+	keys := make([]K, 0)
+
+	for seq.Next() {
+		keys = append(keys, seq.Key())
+	}
+
+	return keys
 }
 
 func Bench[K, V comparable](b *testing.B, compare ord.Ord[K], gen func(int) (K, V)) {

@@ -52,7 +52,7 @@ func (seq *takeWhile[K, V]) Next() bool {
 		return false
 	}
 
-	if !seq.f(seq.Key(), seq.Value()) {
+	if !seq.f(seq.KeyValue()) {
 		seq.f = nil
 		return false
 	}

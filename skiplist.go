@@ -259,7 +259,6 @@ func Remove[K, V any](list *SkipList[K, V], key K) V {
 }
 
 // Values return all values from the list
-// TODO: deprecate
 func Values[K, V any](list *SkipList[K, V]) Iterator[K, V] {
 	return newIterator(list.head)
 }
