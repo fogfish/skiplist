@@ -14,35 +14,71 @@ func main() {
 	list := skiplist.New[int, string](ord.Type[int]())
 
 	// Put new values
-	skiplist.Put(list, 5, "instance")
-	skiplist.Put(list, 3, "a")
-	skiplist.Put(list, 1, "this")
-	skiplist.Put(list, 2, "is")
-	skiplist.Put(list, 6, "of")
-	skiplist.Put(list, 4, "new")
-	skiplist.Put(list, 7, "skiplist")
+	fmt.Println("\n==> put values")
+	skiplist.Put(list, 50, "instance")
+	skiplist.Put(list, 30, "a")
+	skiplist.Put(list, 10, "this")
+	skiplist.Put(list, 20, "is")
+	skiplist.Put(list, 60, "of")
+	skiplist.Put(list, 40, "new")
+	skiplist.Put(list, 70, "skiplist")
 
 	// Debug skiplist structure
 	fmt.Println(list)
 
 	// Get values
-	fmt.Printf("%s %s\n",
-		skiplist.Get(list, 4),
-		skiplist.Get(list, 7),
+	fmt.Printf("\n==> get values\n%s %s\n",
+		skiplist.Get(list, 40),
+		skiplist.Get(list, 70),
 	)
 
-	// Remove values
-	skiplist.Remove(list, 4)
+	// Lookup
+	fmt.Printf("\n==> lookup node\n%v\n",
+		skiplist.Lookup(list, 40),
+	)
+
+	// Lookup before key
+	fmt.Printf("\n==> lookup before\n%v\n",
+		skiplist.LookupBefore(list, 35),
+	)
+
+	// Lookup after key
+	fmt.Printf("\n==> lookup after\n%v\n",
+		skiplist.LookupAfter(list, 55),
+	)
 
 	// Split the list by key
-	a, b := skiplist.Split(list, 4)
-	a.FMap(func(i int, s string) error {
-		fmt.Printf("%s ", s)
-		return nil
-	})
+	fmt.Println("\n==> split list")
+	a, b := skiplist.Split(list, 35)
+	show(a)
+	show(b)
 
-	b.FMap(func(i int, s string) error {
-		fmt.Printf("%s ", s)
+	// Take While
+	fmt.Println("\n==> take while < 55")
+	c := skiplist.TakeWhile(skiplist.Values(list),
+		func(k int, v string) bool { return k < 55 },
+	)
+	show(c)
+
+	// Drop While
+	fmt.Println("\n==> drop while < 35")
+	d := skiplist.DropWhile(skiplist.Values(list),
+		func(k int, v string) bool { return k < 35 },
+	)
+	show(d)
+
+	//
+	fmt.Println("\n==> take range [35, 60]")
+	e := skiplist.Range(list, 35, 60)
+	show(e)
+
+	// Remove values
+	skiplist.Remove(list, 40)
+}
+
+func show(seq skiplist.Iterator[int, string]) {
+	skiplist.FMap(seq, func(i int, s string) error {
+		fmt.Printf("(%d %s) ", i, s)
 		return nil
 	})
 	fmt.Println()

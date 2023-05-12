@@ -91,7 +91,7 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 		i := -1
 		for values.Next() {
 			i++
-			k, v := values.Head()
+			k, v := values.KeyValue()
 			it.Then(t).
 				Should(it.Equiv(k, keys[i])).
 				Should(it.Equiv(v, seed[k]))
@@ -102,7 +102,7 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 		values := skiplist.Values(few)
 
 		i := -1
-		values.FMap(func(k K, v V) error {
+		skiplist.FMap(values, func(k K, v V) error {
 			i++
 			it.Then(t).
 				Should(it.Equiv(k, keys[i])).
@@ -120,7 +120,7 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 			i := -1
 			for before.Next() {
 				i++
-				k, _ := before.Head()
+				k, _ := before.KeyValue()
 
 				it.Then(t).
 					Should(it.Equiv(k, keys[i]))
@@ -129,7 +129,7 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 			i = at - 1
 			for after.Next() {
 				i++
-				k, _ := after.Head()
+				k, _ := after.KeyValue()
 
 				it.Then(t).
 					Should(it.Equiv(k, keys[i]))
@@ -149,32 +149,7 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 			i := at[0] - 1
 			for iter.Next() {
 				i++
-				k, _ := iter.Head()
-
-				it.Then(t).
-					Should(it.Equiv(k, keys[i]))
-			}
-		}
-	})
-
-	t.Run("Slice", func(t *testing.T) {
-		for _, at := range [][]int{
-			{0, len(keys) / 4},
-			{len(keys) / 4, len(keys) / 4},
-			{len(keys) / 2, len(keys) / 2},
-			{0, 1},
-			{len(keys) / 4, 1},
-			{len(keys) / 2, 1},
-			{len(keys) - 1, 1},
-		} {
-			key := keys[at[0]]
-			n := at[1]
-			iter := skiplist.Slice(few, key, n)
-
-			i := at[0] - 1
-			for iter.Next() {
-				i++
-				k, _ := iter.Head()
+				k, _ := iter.KeyValue()
 
 				it.Then(t).
 					Should(it.Equiv(k, keys[i]))

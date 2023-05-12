@@ -38,7 +38,7 @@ type SkipList[K, V any] struct {
 
 	//
 	// head of the list, the node is a lowest element
-	head *tSkipNode[K, V]
+	head *Node[K, V]
 
 	//
 	// number of elements in the list, O(1)
@@ -51,7 +51,7 @@ type SkipList[K, V any] struct {
 	//
 	// buffer to estimate the skip path during insert / remove
 	// the buffer implements optimization of memory allocations
-	path [L]*tSkipNode[K, V]
+	path [L]*Node[K, V]
 }
 
 // String converts table to string
@@ -69,6 +69,9 @@ func (list *SkipList[K, V]) String() string {
 	return buffer.String()
 }
 
+// Head (first) element of the list
+func (list *SkipList[K, V]) Head() *Node[K, V] { return list.head.fingers[0] }
+
 // New create instance of SkipList
 func New[K, V any](ord ord.Ord[K], random ...rand.Source) *SkipList[K, V] {
 	// ptable := probability(1<<32, 1/math.E)
@@ -82,10 +85,10 @@ func New[K, V any](ord ord.Ord[K], random ...rand.Source) *SkipList[K, V] {
 
 	return &SkipList[K, V]{
 		ord:    ord,
-		head:   newSkipNode[K, V](L),
+		head:   newNode[K, V](L),
 		length: 0,
 		random: rnd,
-		path:   [L]*tSkipNode[K, V]{},
+		path:   [L]*Node[K, V]{},
 	}
 }
 
@@ -93,11 +96,11 @@ func New[K, V any](ord ord.Ord[K], random ...rand.Source) *SkipList[K, V] {
 // func probability(n int, p float64) []float64 {
 // 	// level := int(math.Log10(float64(n)) / math.Log10(1/p))
 // 	table := make([]float64, L+1)
-
+//
 // 	for i := 1; i <= L; i++ {
 // 		table[i-1] = math.Pow(p, float64(i-1))
 // 	}
-
+//
 // 	return /*level,*/ table
 // }
 
@@ -107,12 +110,12 @@ func Length[K, V any](list *SkipList[K, V]) int {
 }
 
 // Put insert the element into the list
-func Put[K, V any](list *SkipList[K, V], key K, val V) *SkipList[K, V] {
+func Put[K, V any](list *SkipList[K, V], key K, val V) {
 	v, path := skip(list, key)
 
 	if v != nil && list.ord.Compare(v.key, key) == 0 {
 		v.val = val
-		return list
+		return
 	}
 
 	rank, node := mkNode(list, key, val)
@@ -124,14 +127,13 @@ func Put[K, V any](list *SkipList[K, V], key K, val V) *SkipList[K, V] {
 	}
 
 	list.length++
-	return list
 }
 
 // skip algorithm is similar to search algorithm that traversing forward pointers.
 // skip maintain the vector path that contains a pointer to the rightmost node
 // of level i or higher that is to the left of the location of the
 // insertion/deletion.
-func skip[K, V any](list *SkipList[K, V], key K) (*tSkipNode[K, V], [L]*tSkipNode[K, V]) {
+func skip[K, V any](list *SkipList[K, V], key K) (*Node[K, V], [L]*Node[K, V]) {
 	path := list.path
 
 	node := list.head
@@ -148,7 +150,7 @@ func skip[K, V any](list *SkipList[K, V], key K) (*tSkipNode[K, V], [L]*tSkipNod
 }
 
 // mkNode creates a new node, randomly defines empty fingers (level of the node)
-func mkNode[K, V any](list *SkipList[K, V], key K, val V) (int, *tSkipNode[K, V]) {
+func mkNode[K, V any](list *SkipList[K, V], key K, val V) (int, *Node[K, V]) {
 	// See: https://golang.org/src/math/rand/rand.go#L150
 	p := float64(list.random.Int63()) / (1 << 63)
 
@@ -157,10 +159,10 @@ func mkNode[K, V any](list *SkipList[K, V], key K, val V) (int, *tSkipNode[K, V]
 		level++
 	}
 
-	node := &tSkipNode[K, V]{
+	node := &Node[K, V]{
 		key:     key,
 		val:     val,
-		fingers: [L]*tSkipNode[K, V]{},
+		fingers: [L]*Node[K, V]{},
 	}
 
 	return level, node
@@ -168,24 +170,51 @@ func mkNode[K, V any](list *SkipList[K, V], key K, val V) (int, *tSkipNode[K, V]
 
 // Get looks up the element in the list.
 // It return "empty" value for type V is key is not found
+// TODO: Get(...) (V, bool)
 func Get[K, V any](list *SkipList[K, V], key K) V {
-	if v, has := Lookup(list, key); has {
-		return v
+	if node := Lookup(list, key); node != nil {
+		return node.val
 	}
 
 	return *new(V)
 }
 
-// Lookup the element in the list.
-// It return boolean flag to indicate if element is not found
-func Lookup[K, V any](list *SkipList[K, V], key K) (V, bool) {
+// Lookup node equal to key.
+// It return nil if element is not found
+func Lookup[K, V any](list *SkipList[K, V], key K) *Node[K, V] {
 	node := search(list, key)
 
 	if node != nil && list.ord.Compare(node.key, key) == 0 {
-		return node.val, true
+		return node
 	}
 
-	return *new(V), false
+	return nil
+}
+
+// Lookup first node either equal of greater than key [key, ...)
+func LookupAfter[K, V any](list *SkipList[K, V], key K) *Node[K, V] {
+	node := search(list, key)
+
+	if node == list.head {
+		return nil
+	}
+
+	return node
+}
+
+// Lookup first node either equal of lower than key (..., key]
+func LookupBefore[K, V any](list *SkipList[K, V], key K) *Node[K, V] {
+	node, path := skip(list, key)
+
+	if node != nil && list.ord.Compare(node.key, key) == 0 {
+		return node
+	}
+
+	if path[0] == list.head {
+		return nil
+	}
+
+	return path[0]
 }
 
 // search algorithm traversing forward pointers that do not jumps over the node
@@ -194,7 +223,7 @@ func Lookup[K, V any](list *SkipList[K, V], key K) (V, bool) {
 // the search moves down to the next level. When we can make no more progress at
 // level 0, we must be immediately in front of the node that contains
 // the desired element (if it is in the list).
-func search[K, V any](list *SkipList[K, V], key K) *tSkipNode[K, V] {
+func search[K, V any](list *SkipList[K, V], key K) *Node[K, V] {
 	node := list.head
 	next := &list.head.fingers
 	for level := L - 1; level >= 0; level-- {
@@ -230,17 +259,20 @@ func Remove[K, V any](list *SkipList[K, V], key K) V {
 }
 
 // Values return all values from the list
-func Values[K, V any](list *SkipList[K, V]) *Iterator[K, V] {
-	return newIterator(list.ord, list.head, nil)
+// TODO: deprecate
+func Values[K, V any](list *SkipList[K, V]) Iterator[K, V] {
+	return newIterator( /*list.ord,*/ list.head)
 }
 
 // Split the list before and after the key.
 // It returns two lists [..., key) and [key, ...].
-func Split[K, V any](list *SkipList[K, V], key K) (*Iterator[K, V], *Iterator[K, V]) {
+func Split[K, V any](list *SkipList[K, V], key K) (Iterator[K, V], Iterator[K, V]) {
 	v, p := skip(list, key)
 
-	head := newIterator(list.ord, p[L-1], v)
-	tail := newIterator(list.ord, p[0], nil)
+	head := TakeWhile(newIterator(p[L-1]),
+		func(k K, v V) bool { return list.ord.Compare(k, key) == -1 },
+	)
+	tail := newIterator(p[0])
 
 	if v == nil {
 		return head, nil
@@ -254,51 +286,14 @@ func Split[K, V any](list *SkipList[K, V], key K) (*Iterator[K, V], *Iterator[K,
 }
 
 // Extract inclusive range of the list on [from, to] interval
-func Range[K, V any](list *SkipList[K, V], from, to K) *Iterator[K, V] {
+func Range[K, V any](list *SkipList[K, V], from, to K) Iterator[K, V] {
 	v, p := skip(list, from)
 
 	if v == nil {
 		return nil
 	}
 
-	iter := newIterator[K](inclusiveRange[K]{list.ord}, p[0], &tSkipNode[K, V]{key: to})
-	return iter
-}
-
-type inclusiveRange[K any] struct{ ord.Ord[K] }
-
-func (inclusive inclusiveRange[K]) Compare(a, b K) int {
-	if inclusive.Ord.Compare(a, b) != 1 {
-		return -1
-	}
-	return 1
-}
-
-// Extract n elements after the key.
-// It returns empty iterator if key do not exists.
-func Slice[K, V any](list *SkipList[K, V], key K, n int) *Iterator[K, V] {
-	v, p := skip(list, key)
-
-	if v == nil || list.ord.Compare(v.key, key) != 0 {
-		return nil
-	}
-
-	for i := 0; i < n; i++ {
-		if v.fingers[0] == nil {
-			break
-		}
-
-		v = v.fingers[0]
-	}
-
-	if v == nil {
-		return newIterator(list.ord, p[0], nil)
-	}
-
-	if list.ord.Compare(v.key, key) == 0 {
-		return newIterator[K](inclusiveRange[K]{list.ord}, p[0], &tSkipNode[K, V]{key: v.key})
-	}
-
-	iter := newIterator(list.ord, p[0], &tSkipNode[K, V]{key: v.key})
-	return iter
+	return TakeWhile(newIterator(p[0]),
+		func(k K, v V) bool { return list.ord.Compare(k, to) != 1 },
+	)
 }
