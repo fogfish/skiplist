@@ -219,6 +219,13 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 		}
 	})
 
+	t.Run("Map", func(t *testing.T) {
+		seq := toSeq(skiplist.Map(few.Head().Seq(), func(k K, v V) K { return k }))
+		it.Then(t).Should(
+			it.Seq(seq).Equal(keys...),
+		)
+	})
+
 	t.Run("Remove", func(t *testing.T) {
 		key := keys[0]
 		val0 := skiplist.Remove(nul, key)
