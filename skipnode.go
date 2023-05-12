@@ -50,3 +50,6 @@ func (node *Node[K, V]) KeyValue() (K, V) { return node.key, node.val }
 //
 //	for node := skiplist.Lookup(...); node != nil; node.Next() { /* ... */}
 func (node *Node[K, V]) Next() *Node[K, V] { return node.fingers[0] }
+
+// Iterator from node
+func (node *Node[K, V]) Seq() Iterator[K, V] { return newIterator(node) }
