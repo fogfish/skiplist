@@ -81,6 +81,17 @@ func main() {
 
 	// Remove values
 	skiplist.Remove(list, 40)
+
+	// Split list
+	fmt.Println("\n==> split")
+	head, tail := skiplist.SplitAt(list, 45)
+
+	fmt.Println("head")
+	fmt.Println(head)
+
+	fmt.Println("tail")
+	fmt.Println(tail)
+
 }
 
 func show(seq skiplist.Iterator[int, string]) {

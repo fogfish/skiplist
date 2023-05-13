@@ -284,6 +284,26 @@ func Split[K, V any](list *SkipList[K, V], key K) (Iterator[K, V], Iterator[K, V
 	return head, tail
 }
 
+// Split the list at key into distinct lists [..., key) and [key, ...].
+func SplitAt[K, V any](list *SkipList[K, V], key K) (*SkipList[K, V], *SkipList[K, V]) {
+	v, p := skip(list, key)
+
+	for level, x := range p {
+		x.fingers[level] = nil
+	}
+
+	tail := &SkipList[K, V]{
+		ord:    list.ord,
+		head:   newNode[K, V](L),
+		length: 0,
+		random: list.random,
+		path:   [L]*Node[K, V]{},
+	}
+	tail.head.fingers[0] = v
+
+	return list, tail
+}
+
 // Extract inclusive range of the list on [from, to] interval
 func Range[K, V any](list *SkipList[K, V], from, to K) Iterator[K, V] {
 	v, _ := skip(list, from)
