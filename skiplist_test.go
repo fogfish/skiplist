@@ -39,15 +39,17 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		it.Then(t).
-			ShouldNot(it.Equal(len(one.String()), 0))
+		it.Then(t).ShouldNot(
+			it.Equal(len(one.String()), 0),
+		)
 	})
 
 	t.Run("Length", func(t *testing.T) {
-		it.Then(t).
-			Should(it.Equal(skiplist.Length(nul), 0)).
-			Should(it.Equal(skiplist.Length(one), 1)).
-			Should(it.Equal(skiplist.Length(few), len(seed)))
+		it.Then(t).Should(
+			it.Equal(skiplist.Length(nul), 0),
+			it.Equal(skiplist.Length(one), 1),
+			it.Equal(skiplist.Length(few), len(seed)),
+		)
 	})
 
 	t.Run("Put", func(t *testing.T) {
@@ -85,55 +87,82 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 		}
 	})
 
-	t.Run("Values", func(t *testing.T) {
-		values := skiplist.Values(few)
+	t.Run("Lookup", func(t *testing.T) {
+		for _, at := range []int{
+			0,
+			len(keys) / 4,
+			len(keys) / 2,
+			len(keys) - 1,
+		} {
+			key := keys[at]
+			node := skiplist.Lookup(few, key)
+			before := skiplist.LookupBefore(few, key)
+			after := skiplist.LookupAfter(few, key)
 
-		i := -1
-		for values.Next() {
-			i++
-			k, v := values.Head()
-			it.Then(t).
-				Should(it.Equiv(k, keys[i])).
-				Should(it.Equiv(v, seed[k]))
+			it.Then(t).Should(
+				it.Equal(node.Key(), key),
+				it.Equiv(node.Value(), seed[key]),
+				it.Equal(before.Key(), key),
+				it.Equiv(before.Value(), seed[key]),
+				it.Equal(after.Key(), key),
+				it.Equiv(after.Value(), seed[key]),
+			)
 		}
+	})
+
+	t.Run("Values", func(t *testing.T) {
+		values := toSeq(few.Head().Seq())
+
+		it.Then(t).Should(
+			it.Seq(values).Equal(keys...),
+		)
+	})
+
+	t.Run("Node.Next", func(t *testing.T) {
+		seq := make([]K, 0)
+		for node := few.Head(); node != nil; node = node.Next() {
+			seq = append(seq, node.Key())
+
+			it.Then(t).Should(
+				it.Equiv(node.Value(), seed[node.Key()]),
+			)
+		}
+
+		it.Then(t).Should(
+			it.Seq(seq).Equal(keys...),
+		)
 	})
 
 	t.Run("ValuesFMap", func(t *testing.T) {
 		values := skiplist.Values(few)
 
-		i := -1
-		values.FMap(func(k K, v V) error {
+		i := 0
+		skiplist.FMap(values, func(k K, v V) error {
 			i++
-			it.Then(t).
-				Should(it.Equiv(k, keys[i])).
-				Should(it.Equiv(v, seed[k]))
-
+			it.Then(t).Should(
+				it.Equiv(k, keys[i]),
+				it.Equiv(v, seed[k]),
+			)
 			return nil
 		})
 	})
 
 	t.Run("Split", func(t *testing.T) {
-		for _, at := range []int{0, len(keys) / 2, len(keys) - 1} {
+		for _, at := range []int{
+			0,
+			len(keys) / 4,
+			len(keys) / 2,
+			len(keys) - 1,
+		} {
 			key := keys[at]
 			before, after := skiplist.Split(few, key)
+			seqB := toSeq(before)
+			seqA := toSeq(after)
 
-			i := -1
-			for before.Next() {
-				i++
-				k, _ := before.Head()
-
-				it.Then(t).
-					Should(it.Equiv(k, keys[i]))
-			}
-
-			i = at - 1
-			for after.Next() {
-				i++
-				k, _ := after.Head()
-
-				it.Then(t).
-					Should(it.Equiv(k, keys[i]))
-			}
+			it.Then(t).Should(
+				it.Seq(seqB).Equal(keys[:at]...),
+				it.Seq(seqA).Equal(keys[at:]...),
+			)
 		}
 	})
 
@@ -144,42 +173,87 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 			{len(keys) / 2, len(keys) - 1},
 		} {
 			from, to := keys[at[0]], keys[at[1]]
-			iter := skiplist.Range(few, from, to)
+			seq := toSeq(
+				skiplist.Range(few, from, to),
+			)
 
-			i := at[0] - 1
-			for iter.Next() {
-				i++
-				k, _ := iter.Head()
-
-				it.Then(t).
-					Should(it.Equiv(k, keys[i]))
-			}
+			it.Then(t).Should(
+				it.Seq(seq).Equal(keys[at[0] : at[1]+1]...),
+			)
 		}
 	})
 
-	t.Run("Slice", func(t *testing.T) {
+	t.Run("TakeWhile", func(t *testing.T) {
+		for _, at := range []int{
+			0,
+			1,
+			len(keys) / 4,
+			len(keys) / 2,
+			len(keys) - 1,
+		} {
+			seq := toSeq(
+				skiplist.TakeWhile(skiplist.Values(few),
+					func(k K, v V) bool { return ord.Compare(k, keys[at]) == -1 },
+				),
+			)
+
+			it.Then(t).Should(
+				it.Seq(seq).Equal(keys[:at]...),
+			)
+		}
+	})
+
+	t.Run("DropWhile", func(t *testing.T) {
+		for _, at := range []int{
+			0,
+			1,
+			len(keys) / 4,
+			len(keys) / 2,
+			len(keys) - 1,
+		} {
+			seq := toSeq(
+				skiplist.DropWhile(skiplist.Values(few),
+					func(k K, v V) bool { return ord.Compare(k, keys[at]) == -1 },
+				),
+			)
+
+			it.Then(t).Should(
+				it.Seq(seq).Equal(keys[at:]...),
+			)
+		}
+	})
+
+	t.Run("Filter", func(t *testing.T) {
 		for _, at := range [][]int{
 			{0, len(keys) / 4},
-			{len(keys) / 4, len(keys) / 4},
-			{len(keys) / 2, len(keys) / 2},
-			{0, 1},
-			{len(keys) / 4, 1},
-			{len(keys) / 2, 1},
-			{len(keys) - 1, 1},
+			{len(keys) / 4, len(keys) / 2},
+			{len(keys) / 2, len(keys) - 1},
 		} {
-			key := keys[at[0]]
-			n := at[1]
-			iter := skiplist.Slice(few, key, n)
+			from, to := keys[at[0]], keys[at[1]]
+			seq := toSeq(
+				skiplist.Filter(skiplist.Values(few),
+					func(k K, v V) bool { return ord.Compare(k, from) > -1 && ord.Compare(k, to) < 1 },
+				),
+			)
 
-			i := at[0] - 1
-			for iter.Next() {
-				i++
-				k, _ := iter.Head()
-
-				it.Then(t).
-					Should(it.Equiv(k, keys[i]))
-			}
+			it.Then(t).Should(
+				it.Seq(seq).Equal(keys[at[0] : at[1]+1]...),
+			)
 		}
+	})
+
+	t.Run("Map", func(t *testing.T) {
+		seq := make([]K, 0)
+		itr := skiplist.Map(few.Head().Seq(), func(k K, v V) K { return k })
+
+		for has := itr != nil; has; has = itr.Next() {
+			_, v := itr.KeyValue()
+			seq = append(seq, v)
+		}
+
+		it.Then(t).Should(
+			it.Seq(seq).Equal(keys...),
+		)
 	})
 
 	t.Run("Remove", func(t *testing.T) {
@@ -205,6 +279,16 @@ func Suite[K comparable, V any](t *testing.T, ord ord.Ord[K], seed map[K]V) {
 			it.Equiv(val1, *new(V)),
 		)
 	})
+}
+
+func toSeq[K, V any](seq skiplist.Iterator[K, V]) []K {
+	keys := make([]K, 0)
+
+	for has := seq != nil; has; has = seq.Next() {
+		keys = append(keys, seq.Key())
+	}
+
+	return keys
 }
 
 func Bench[K, V comparable](b *testing.B, compare ord.Ord[K], gen func(int) (K, V)) {

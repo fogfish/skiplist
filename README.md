@@ -32,8 +32,7 @@
 
 ---
 
-Package `skiplist` implements a probabilistic, mutable list-based data structure
-that are a simple and efficient substitute for balanced trees. The algorithm is well depicted by [the article](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.17.524).
+Package `skiplist` implements a probabilistic, mutable list-based data structure that are a simple and efficient substitute for balanced trees. The algorithm is well depicted by [the article](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.17.524).
 
 
 ## Installing 
