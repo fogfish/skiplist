@@ -194,9 +194,10 @@ func Lookup[K, V any](list *SkipList[K, V], key K) *Node[K, V] {
 // Lookup first node either equal of greater than key [key, ...)
 func LookupAfter[K, V any](list *SkipList[K, V], key K) *Node[K, V] {
 	node := search(list, key)
+	// node, _ := skip(list, key)
 
 	if node == list.head {
-		return nil
+		return list.head.fingers[0]
 	}
 
 	return node
@@ -211,7 +212,7 @@ func LookupBefore[K, V any](list *SkipList[K, V], key K) *Node[K, V] {
 	}
 
 	if path[0] == list.head {
-		return nil
+		return list.head.fingers[0]
 	}
 
 	return path[0]
@@ -292,14 +293,21 @@ func SplitAt[K, V any](list *SkipList[K, V], key K) (*SkipList[K, V], *SkipList[
 		x.fingers[level] = nil
 	}
 
+	count := 0
+	for node := list.head.fingers[0]; node != nil; node = node.fingers[0] {
+		count++
+	}
+
 	tail := &SkipList[K, V]{
 		ord:    list.ord,
 		head:   newNode[K, V](L),
-		length: 0,
+		length: list.length - count,
 		random: list.random,
 		path:   [L]*Node[K, V]{},
 	}
 	tail.head.fingers[0] = v
+
+	list.length = count
 
 	return list, tail
 }

@@ -20,7 +20,7 @@ type Iterator[K, V any] interface {
 	Value() V
 	KeyValue() (K, V)
 	Next() bool
-}
+} // TODO: Value() (K, V)
 
 type iterator[K, V any] struct {
 	*Node[K, V]
