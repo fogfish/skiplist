@@ -8,26 +8,26 @@
 
 package skiplist
 
-type SkipMap[K Key, V any] struct {
+type Map[K Key, V any] struct {
 	keys   *Set[K]
 	values map[K]V
 
 	Length int
 }
 
-func NewMap[K Key, V any](opts ...ConfigSet[K]) *SkipMap[K, V] {
+func NewMap[K Key, V any](opts ...ConfigSet[K]) *Map[K, V] {
 	keys := NewSet(opts...)
 
-	return &SkipMap[K, V]{
+	return &Map[K, V]{
 		keys:   keys,
 		values: make(map[K]V),
 		Length: 0,
 	}
 }
 
-func (kv *SkipMap[K, V]) String() string { return kv.keys.String() }
+func (kv *Map[K, V]) String() string { return kv.keys.String() }
 
-func (kv *SkipMap[K, V]) Put(key K, val V) bool {
+func (kv *Map[K, V]) Put(key K, val V) bool {
 	if _, has := kv.values[key]; has {
 		kv.values[key] = val
 		return false
@@ -39,27 +39,27 @@ func (kv *SkipMap[K, V]) Put(key K, val V) bool {
 	return true
 }
 
-func (kv *SkipMap[K, V]) Get(key K) (V, bool) {
+func (kv *Map[K, V]) Get(key K) (V, bool) {
 	val, has := kv.values[key]
 	return val, has
 }
 
-func (kv *SkipMap[K, V]) Cut(key K) bool {
+func (kv *Map[K, V]) Cut(key K) bool {
 	delete(kv.values, key)
 	flag := kv.keys.Cut(key)
 	kv.Length = kv.keys.Length
 	return flag
 }
 
-func (kv *SkipMap[K, V]) Keys() *Element[K] {
+func (kv *Map[K, V]) Keys() *Element[K] {
 	return kv.keys.Values()
 }
 
-func (kv *SkipMap[K, V]) Successors(key K) *Element[K] {
+func (kv *Map[K, V]) Successors(key K) *Element[K] {
 	return kv.keys.Successors(key)
 }
 
-func (kv *SkipMap[K, V]) Split(key K) *SkipMap[K, V] {
+func (kv *Map[K, V]) Split(key K) *Map[K, V] {
 	keys := kv.keys.Split(key)
 	values := make(map[K]V)
 
@@ -68,7 +68,7 @@ func (kv *SkipMap[K, V]) Split(key K) *SkipMap[K, V] {
 		delete(kv.values, e.key)
 	}
 
-	return &SkipMap[K, V]{
+	return &Map[K, V]{
 		keys:   keys,
 		values: values,
 	}
