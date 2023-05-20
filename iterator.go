@@ -41,7 +41,12 @@ type forSet[K Key] struct {
 func (it *forSet[K]) Key() K   { return it.el.key }
 func (it *forSet[K]) Value() K { return it.el.key }
 func (it *forSet[K]) Next() bool {
+	if it.el == nil {
+		return false
+	}
+
 	it.el = it.el.Next()
+
 	return it.el != nil
 }
 
@@ -69,10 +74,15 @@ type forMap[K Key, V any] struct {
 func (it *forMap[K, V]) Key() K   { return it.key.key }
 func (it *forMap[K, V]) Value() V { return it.val }
 func (it *forMap[K, V]) Next() bool {
+	if it.key == nil {
+		return false
+	}
+
 	it.key = it.key.Next()
 	if it.key == nil {
 		return false
 	}
+
 	it.val, _ = it.kv.Get(it.key.key)
 
 	return true

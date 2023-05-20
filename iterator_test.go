@@ -56,8 +56,16 @@ func ForSuite[K skiplist.Num, V any](
 				)
 				i++
 			}
+			if e != nil {
+				it.Then(t).ShouldNot(
+					it.True(e.Next()),
+					it.True(e.Next()),
+				)
+			}
 
-			it.Then(t).Should(it.Equal(i, k[1]))
+			it.Then(t).Should(
+				it.Equal(i, k[1]),
+			)
 		}
 	})
 
@@ -93,6 +101,12 @@ func ForSuite[K skiplist.Num, V any](
 			for has := e != nil; has; has = e.Next() {
 				it.Then(t).Should(
 					it.Equal(e.Key()%2, 0),
+				)
+			}
+			if e != nil {
+				it.Then(t).ShouldNot(
+					it.True(e.Next()),
+					it.True(e.Next()),
 				)
 			}
 		}
