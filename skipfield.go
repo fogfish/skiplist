@@ -87,7 +87,8 @@ func (f *GF2[K]) Add(key K) (K, K, K) {
 	return head.lo, mid, hi
 }
 
-func (f *GF2[K]) Get(key K) (K, K) {
+// Check elements position on the field
+func (f *GF2[K]) Has(key K) (K, K) {
 	node := f.keys.Successors(key)
 	if node == nil {
 		panic("non-continuos field")

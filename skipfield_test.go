@@ -30,7 +30,7 @@ func TestField(t *testing.T) {
 		{0x38, 0x38, 0x39},
 		{0x39, 0x39, 0x39},
 	} {
-		lo, hi := gf2.Get(key)
+		lo, hi := gf2.Has(key)
 		it.Then(t).Should(
 			it.Equal(lo, x[0]),
 			it.Equal(hi, x[2]),
