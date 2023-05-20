@@ -74,6 +74,12 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 		}
 	})
 
+	t.Run("String", func(t *testing.T) {
+		it.Then(t).Should(
+			it.String(set.String()).Contain("SkipSet"),
+		)
+	})
+
 	t.Run("Cut", func(t *testing.T) {
 		for _, el := range seq {
 			it.Then(t).Should(

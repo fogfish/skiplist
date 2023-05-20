@@ -43,6 +43,11 @@ func TestField(t *testing.T) {
 			it.Equal(hi, x[2]),
 		)
 	}
+
+	it.Then(t).Should(
+		it.String(gf2.String()).Contain("SkipGF2"),
+	)
+
 }
 
 // go test -fuzz=FuzzGF2
