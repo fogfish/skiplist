@@ -147,6 +147,29 @@ func ForSuite[K skiplist.Num, V any](
 			it.Then(t).Should(it.Equal(i, len(seq)))
 		}
 	})
+
+	t.Run("Plus", func(t *testing.T) {
+		for _, k := range []int{0, len(seq) / 4, len(seq) / 2, len(seq) - 1} {
+
+			m := len(seq) - k
+			i := 0
+			e := skiplist.Plus(gen(seq[k]), gen(seq[k]))
+			for has := e != nil; has; has = e.Next() {
+				it.Then(t).Should(
+					it.Equal(e.Key(), seq[k+i%m]),
+				)
+				i++
+			}
+
+			v := gen(seq[k])
+			it.Then(t).Should(
+				it.Equal(k+i/2, len(seq)),
+				it.Equiv(skiplist.Plus(v, nil), v),
+				it.Equiv(skiplist.Plus(nil, v), v),
+			)
+		}
+	})
+
 }
 
 func TestForSet(t *testing.T) {

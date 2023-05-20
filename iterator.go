@@ -196,3 +196,36 @@ type fmap[K Key, A, B any] struct {
 func (seq fmap[K, A, B]) Value() B {
 	return seq.f(seq.Iterator.Key(), seq.Iterator.Value())
 }
+
+// Plus operation for iterators add one after another
+func Plus[K Key, V any](lhs, rhs Iterator[K, V]) Iterator[K, V] {
+	if lhs == nil {
+		return rhs
+	}
+
+	if rhs == nil {
+		return lhs
+	}
+
+	return &plus[K, V]{Iterator: lhs, rhs: rhs}
+}
+
+type plus[K Key, V any] struct {
+	Iterator[K, V]
+	rhs Iterator[K, V]
+}
+
+func (plus *plus[K, V]) Next() bool {
+	hasNext := plus.Iterator.Next()
+
+	if !hasNext && plus.rhs != nil {
+		plus.Iterator, plus.rhs = plus.rhs, nil
+		return true
+	}
+
+	if !hasNext && plus.rhs == nil {
+		return false
+	}
+
+	return true
+}
