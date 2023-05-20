@@ -32,9 +32,38 @@
 
 ---
 
-Package `skiplist` implements a probabilistic, mutable list-based data structure
-that are a simple and efficient substitute for balanced trees. The algorithm is well depicted by [the article](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.17.524).
+Package `skiplist` implements a probabilistic, mutable list-based data structure that are a simple and efficient substitute for balanced trees. The algorithm is well depicted by [the article](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.17.524).
 
+## Inspiration
+
+The library provides generic implementation of
+* `skiplist.Set[K]` ordered set of elements
+* `skiplist.Map[K]` ordered set of key, value pairs
+* `skiplist.GF2[K]` finite field on modulo 2  
+
+For each of the data type it standardize interfaces around
+
+```go
+// Set behavior trait
+type Set[K skiplist.Key] interface {
+  Add(K) bool
+  Has(K) bool
+  Cut(K) bool
+  Values(K) *Element[K]
+  Successors(K) *Element[K]
+  Split(K) Set[K]
+}
+
+// Map (Key, Value) pairs behavior trait
+type Map[K skiplist.Key, V any] interface {
+  Put(K, V) bool
+  Get(K) (V, bool)
+  Cut(K) (V, bool)
+  Keys(K) *Element[K]
+  Successors(K) *Element[K]
+  Split(K) Map[K, V]
+}
+```
 
 ## Installing 
 
@@ -43,7 +72,7 @@ The latest version of the library is available at `main` branch. All development
 1. Use `go get` to retrieve the library and add it as dependency to your application.
 
 ```bash
-go get -u github.com/fogfish/skiplist
+go get github.com/fogfish/skiplist@latest
 ```
 
 2. Import it in your code
@@ -56,22 +85,21 @@ import (
 
 ## Quick Example
 
-Here is a minimal example on creating an instance of the skiplist. See the full [example](examples/skiplist.go)
+Here is a minimal example on creating an instance of the `skiplist.Map`. See the full [example](examples)
 
 ```go
 package main
 
 import (
   "github.com/fogfish/skiplist"
-  "github.com/fogfish/skiplist/ord"
 )
 
 func main() {
-  list := skiplist.New[int, string](ord.Type[int]())
+  kv := skiplist.NewMap[int, string]()
 
-  skiplist.Put(list, 5, "instance")
-  skiplist.Get(list, 5)
-  skiplist.Remove(list, 5)
+  kv.Put(5, "instance")
+  kv.Get(5)
+  kv.Cut(5)
 }
 ```
 
@@ -94,7 +122,13 @@ The build and testing process requires [Go](https://golang.org) latest version.
 git clone https://github.com/fogfish/skiplist
 cd skiplist
 go test
+
 go test -run=^$ -bench=. -cpu 1
+
+go test -fuzz=FuzzSetAddCut
+go test -fuzz=FuzzMapIntPutGet
+go test -fuzz=FuzzMapStringPutGet
+go test -fuzz=FuzzGF2
 ```
 
 ### commit message

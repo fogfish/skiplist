@@ -45,7 +45,7 @@ func TestField(t *testing.T) {
 	}
 }
 
-// go test -fuzz=FuzzGF
+// go test -fuzz=FuzzGF2
 func FuzzGF2(f *testing.F) {
 	field := skiplist.NewGF2[uint32]()
 	f.Add(uint32(1024))
