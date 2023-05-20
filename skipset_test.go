@@ -24,9 +24,7 @@ import (
 func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 	//
 	sorted := make([]K, len(seq))
-	for i, x := range seq {
-		sorted[i] = x
-	}
+	copy(sorted, seq)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
 
 	//
@@ -143,7 +141,7 @@ func TestSetOfStringAddHasCut(t *testing.T) {
 func SetBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 	size := 1000000
 	defSet := skiplist.NewSet[K]()
-	defKey := make([]K, size, size)
+	defKey := make([]K, size)
 
 	for i := 0; i < size; i++ {
 		key := gen(i)
@@ -151,9 +149,10 @@ func SetBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		defSet.Add(key)
 	}
 
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(defKey),
-		func(i, j int) { defKey[i], defKey[j] = defKey[j], defKey[i] })
+	rand.New(rand.NewSource(time.Now().UnixNano())).Shuffle(
+		len(defKey),
+		func(i, j int) { defKey[i], defKey[j] = defKey[j], defKey[i] },
+	)
 
 	b.Run("AddToTail", func(b *testing.B) {
 		set := skiplist.NewSet[K]()

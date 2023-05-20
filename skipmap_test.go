@@ -165,7 +165,7 @@ func TestMapOfStringPutGetCut(t *testing.T) {
 func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 	size := 1000000
 	defMap := skiplist.NewMap[K, K]()
-	defKey := make([]K, size, size)
+	defKey := make([]K, size)
 
 	for i := 0; i < size; i++ {
 		key := gen(i)
@@ -173,9 +173,10 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		defMap.Put(key, key)
 	}
 
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(defKey),
-		func(i, j int) { defKey[i], defKey[j] = defKey[j], defKey[i] })
+	rand.New(rand.NewSource(time.Now().UnixNano())).Shuffle(
+		len(defKey),
+		func(i, j int) { defKey[i], defKey[j] = defKey[j], defKey[i] },
+	)
 
 	b.Run("PutToTail", func(b *testing.B) {
 		kv := skiplist.NewMap[K, K]()
