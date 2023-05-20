@@ -229,6 +229,7 @@ func (set *Set[K]) Successors(key K) *Element[K] {
 	return el
 }
 
+// Split set of elements by key
 func (set *Set[K]) Split(key K) *Set[K] {
 	node, path := set.skip(key)
 
