@@ -24,9 +24,7 @@ import (
 func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 	//
 	sorted := make([]K, len(seq))
-	for i, x := range seq {
-		sorted[i] = x
-	}
+	copy(sorted, seq)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
 
 	//

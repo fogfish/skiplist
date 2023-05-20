@@ -150,6 +150,12 @@ func TestForSet(t *testing.T) {
 			return skiplist.ForSet(set, set.Successors(key))
 		},
 	)
+
+	t.Run("Nil", func(t *testing.T) {
+		it.Then(t).Should(
+			it.Nil(skiplist.ForSet(set, nil)),
+		)
+	})
 }
 
 func TestForMap(t *testing.T) {
@@ -167,4 +173,10 @@ func TestForMap(t *testing.T) {
 			return skiplist.ForMap(kv, kv.Successors(key))
 		},
 	)
+
+	t.Run("Nil", func(t *testing.T) {
+		it.Then(t).Should(
+			it.Nil(skiplist.ForMap(kv, nil)),
+		)
+	})
 }

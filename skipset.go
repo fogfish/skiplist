@@ -15,7 +15,12 @@ import (
 	"time"
 )
 
-// Abstract element of set
+// Each element is represented by a Element in a skip structures. Each node has
+// a height or level (length of fingers array), which corresponds to the number
+// of forward pointers the node has. When a new element is inserted into the list,
+// a node with a random level is inserted to represent the element. Random levels
+// are generated with a simple pattern: 50% are level 1, 25% are level 2, 12.5% are
+// level 3 and so on.
 type Element[K Key] struct {
 	key     K
 	fingers [L]*Element[K]
