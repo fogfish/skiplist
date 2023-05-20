@@ -44,11 +44,15 @@ func (kv *Map[K, V]) Get(key K) (V, bool) {
 	return val, has
 }
 
-func (kv *Map[K, V]) Cut(key K) bool {
-	delete(kv.values, key)
-	flag := kv.keys.Cut(key)
-	kv.Length = kv.keys.Length
-	return flag
+func (kv *Map[K, V]) Cut(key K) (V, bool) {
+	val, has := kv.values[key]
+	if has {
+		delete(kv.values, key)
+		kv.keys.Cut(key)
+		kv.Length = kv.keys.Length
+	}
+
+	return val, has
 }
 
 func (kv *Map[K, V]) Keys() *Element[K] {

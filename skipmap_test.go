@@ -85,10 +85,13 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 
 	t.Run("Cut", func(t *testing.T) {
 		for _, el := range seq {
+			val, has := kv.Cut(el)
+			_, exist := kv.Cut(el)
 			it.Then(t).Should(
-				it.True(kv.Cut(el)),
+				it.True(has),
+				it.Equal(val, el),
 			).ShouldNot(
-				it.True(kv.Cut(el)),
+				it.True(exist),
 			)
 		}
 
