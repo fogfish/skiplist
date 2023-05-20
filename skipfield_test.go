@@ -16,7 +16,7 @@ import (
 )
 
 func TestField(t *testing.T) {
-	field := skiplist.NewField[uint8]()
+	gf2 := skiplist.NewGF2[uint8]()
 	key := uint8(0x39)
 
 	for _, x := range [][]uint8{
@@ -30,13 +30,13 @@ func TestField(t *testing.T) {
 		{0x38, 0x38, 0x39},
 		{0x39, 0x39, 0x39},
 	} {
-		lo, hi := field.Where(key)
+		lo, hi := gf2.Get(key)
 		it.Then(t).Should(
 			it.Equal(lo, x[0]),
 			it.Equal(hi, x[2]),
 		)
 
-		lo, mi, hi := field.Split(key)
+		lo, mi, hi := gf2.Add(key)
 		it.Then(t).Should(
 			it.Equal(lo, x[0]),
 			it.Equal(mi, x[1]),
@@ -45,13 +45,13 @@ func TestField(t *testing.T) {
 	}
 }
 
-// go test -fuzz=FuzzField
-func FuzzField(f *testing.F) {
-	field := skiplist.NewField[uint32]()
+// go test -fuzz=FuzzGF
+func FuzzGF2(f *testing.F) {
+	field := skiplist.NewGF2[uint32]()
 	f.Add(uint32(1024))
 
 	f.Fuzz(func(t *testing.T, key uint32) {
-		lo, mi, hi := field.Split(key)
+		lo, mi, hi := field.Add(key)
 		if lo > mi || mi > hi || lo > hi {
 			t.Errorf("invalid split (%d, %d, %d)", lo, mi, hi)
 		}

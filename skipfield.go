@@ -14,21 +14,21 @@ import (
 	"strings"
 )
 
-type Ftype interface {
+type Num interface {
 	~uint8 | ~uint16 | ~uint32 | ~uint64
 }
 
-type Field[K Ftype] struct {
+type GF2[K Num] struct {
 	keys *Set[K]
 	arcs map[K]arc[K]
 }
 
-type arc[K Ftype] struct {
+type arc[K Num] struct {
 	rank uint32
 	lo   K
 }
 
-func NewField[K Ftype](opts ...ConfigSet[K]) *Field[K] {
+func NewGF2[K Num](opts ...ConfigSet[K]) *GF2[K] {
 	keys := NewSet(opts...)
 
 	top := *new(K) - 1
@@ -39,15 +39,15 @@ func NewField[K Ftype](opts ...ConfigSet[K]) *Field[K] {
 		top: {rank: rnk, lo: 0},
 	}
 
-	return &Field[K]{
+	return &GF2[K]{
 		keys: keys,
 		arcs: arcs,
 	}
 }
 
-func (f *Field[K]) String() string {
+func (f *GF2[K]) String() string {
 	sb := strings.Builder{}
-	sb.WriteString(fmt.Sprintf("--- SkipField[%T] %p ---\n", *new(K), &f))
+	sb.WriteString(fmt.Sprintf("--- SkipGF2[%T] %p ---\n", *new(K), &f))
 
 	for node := f.keys.Values(); node != nil; node = node.Next() {
 		key := node.Key()
@@ -60,19 +60,8 @@ func (f *Field[K]) String() string {
 	return sb.String()
 }
 
-func (f *Field[K]) Where(key K) (K, K) {
-	node := f.keys.Successors(key)
-	if node == nil {
-		panic("non-continuos field")
-	}
-
-	hi := node.key
-	arc := f.arcs[hi]
-
-	return arc.lo, hi
-}
-
-func (f *Field[K]) Split(key K) (K, K, K) {
+// Add new element to the field
+func (f *GF2[K]) Add(key K) (K, K, K) {
 	node := f.keys.Successors(key)
 	if node == nil {
 		panic("non-continuos field")
@@ -96,4 +85,16 @@ func (f *Field[K]) Split(key K) (K, K, K) {
 	f.arcs[hi] = tail
 
 	return head.lo, mid, hi
+}
+
+func (f *GF2[K]) Get(key K) (K, K) {
+	node := f.keys.Successors(key)
+	if node == nil {
+		panic("non-continuos field")
+	}
+
+	hi := node.key
+	arc := f.arcs[hi]
+
+	return arc.lo, hi
 }
