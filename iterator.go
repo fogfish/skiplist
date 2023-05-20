@@ -8,45 +8,181 @@
 
 package skiplist
 
-import (
-	"github.com/fogfish/skiplist/ord"
-)
-
-type Iterator[K, V any] struct {
-	ord         ord.Ord[K]
-	node, until *tSkipNode[K, V]
+// Generic iterator over skiplist data structures
+// It is design to build operation over sequence of elements
+//
+//	seq := skiplist.ForSet(set, set.Successor(key))
+//	for has := seq != nil; has; has = seq.Next() {
+//		seq.Key()
+//	}
+type Iterator[K Key, V any] interface {
+	Key() K
+	Value() V
+	Next() bool
 }
 
-func newIterator[K, V any](ord ord.Ord[K], node, until *tSkipNode[K, V]) *Iterator[K, V] {
-	return &Iterator[K, V]{
-		ord:   ord,
-		node:  node,
-		until: until,
+// Iterate over Set elements
+//
+//	seq := skiplist.ForSet(set, set.Successor(key))
+//	for has := seq != nil; has; has = seq.Next() {
+//		seq.Key()
+//	}
+func ForSet[K Key](set *Set[K], el *Element[K]) Iterator[K, K] {
+	if el == nil {
+		return nil
+	}
+	return &forSet[K]{el}
+}
+
+type forSet[K Key] struct {
+	el *Element[K]
+}
+
+func (it *forSet[K]) Key() K   { return it.el.key }
+func (it *forSet[K]) Value() K { return it.el.key }
+func (it *forSet[K]) Next() bool {
+	it.el = it.el.Next()
+	return it.el != nil
+}
+
+// Iterate over Map elements
+//
+//	seq := skiplist.ForMap(kv, kv.Successor(key))
+//	for has := seq != nil; has; has = seq.Next() {
+//		seq.Key()
+//	}
+func ForMap[K Key, V any](kv *Map[K, V], key *Element[K]) Iterator[K, V] {
+	if key == nil {
+		return nil
+	}
+
+	val, _ := kv.Get(key.key)
+	return &forMap[K, V]{key: key, val: val, kv: kv}
+}
+
+type forMap[K Key, V any] struct {
+	key *Element[K]
+	val V
+	kv  *Map[K, V]
+}
+
+func (it *forMap[K, V]) Key() K   { return it.key.key }
+func (it *forMap[K, V]) Value() V { return it.val }
+func (it *forMap[K, V]) Next() bool {
+	it.key = it.key.Next()
+	if it.key == nil {
+		return false
+	}
+	it.val, _ = it.kv.Get(it.key.key)
+
+	return true
+}
+
+// Take values from iterator while predicate function true
+func TakeWhile[K Key, V any](seq Iterator[K, V], f func(K, V) bool) Iterator[K, V] {
+	if seq == nil || !f(seq.Key(), seq.Value()) {
+		return nil
+	}
+
+	return &takeWhile[K, V]{
+		Iterator: seq,
+		f:        f,
 	}
 }
 
-// Head element of the iterator
-func (seq *Iterator[K, V]) Head() (K, V) {
-	return seq.node.key, seq.node.val
+type takeWhile[K Key, V any] struct {
+	Iterator[K, V]
+	f func(K, V) bool
 }
 
-// Next element
-func (seq *Iterator[K, V]) Next() bool {
-	seq.node = seq.node.fingers[0]
-	if seq.until == nil {
-		return seq.node != nil
+func (seq *takeWhile[K, V]) Next() bool {
+	if seq.f == nil || seq.Iterator == nil {
+		return false
 	}
 
-	return seq.node != nil && seq.ord.Compare(seq.node.key, seq.until.key) == -1
+	if !seq.Iterator.Next() {
+		return false
+	}
+
+	if !seq.f(seq.Key(), seq.Value()) {
+		seq.f = nil
+		return false
+	}
+
+	return true
 }
 
-// FMap applies clojure on iterator
-func (seq *Iterator[K, V]) FMap(f func(K, V) error) error {
-	for seq.Next() {
-		if err := f(seq.Head()); err != nil {
+// Drop values from iterator while predicate function true
+func DropWhile[K Key, V any](seq Iterator[K, V], f func(K, V) bool) Iterator[K, V] {
+	for {
+		if !f(seq.Key(), seq.Value()) {
+			return seq
+		}
+
+		if !seq.Next() {
+			return nil
+		}
+	}
+}
+
+// Filter values from iterator
+func Filter[K Key, V any](seq Iterator[K, V], f func(K, V) bool) Iterator[K, V] {
+	for {
+		if f(seq.Key(), seq.Value()) {
+			return filter[K, V]{
+				Iterator: seq,
+				f:        f,
+			}
+		}
+
+		if !seq.Next() {
+			return nil
+		}
+	}
+}
+
+type filter[K Key, V any] struct {
+	Iterator[K, V]
+	f func(K, V) bool
+}
+
+func (seq filter[K, V]) Next() bool {
+	if seq.f == nil || seq.Iterator == nil {
+		return false
+	}
+
+	for {
+		if !seq.Iterator.Next() {
+			return false
+		}
+
+		if seq.f(seq.Key(), seq.Value()) {
+			return true
+		}
+	}
+}
+
+// ForEach applies clojure on iterator
+func ForEach[K Key, V any](seq Iterator[K, V], f func(K, V) error) error {
+	for has := seq != nil; has; has = seq.Next() {
+		if err := f(seq.Key(), seq.Value()); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// FMap transform iterator type
+func FMap[K Key, A, B any](seq Iterator[K, A], f func(K, A) B) Iterator[K, B] {
+	return fmap[K, A, B]{Iterator: seq, f: f}
+}
+
+type fmap[K Key, A, B any] struct {
+	Iterator[K, A]
+	f func(K, A) B
+}
+
+func (seq fmap[K, A, B]) Value() B {
+	return seq.f(seq.Iterator.Key(), seq.Iterator.Value())
 }
