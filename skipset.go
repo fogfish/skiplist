@@ -228,3 +228,31 @@ func (set *Set[K]) Successors(key K) *Element[K] {
 	el, _ := set.skip(key)
 	return el
 }
+
+func (set *Set[K]) Split(key K) *Set[K] {
+	node, path := set.skip(key)
+
+	for level, x := range path {
+		x.fingers[level] = nil
+	}
+
+	tail := &Set[K]{
+		head:   new(Element[K]),
+		null:   *new(K),
+		Length: 0,
+		random: set.random,
+		path:   [L]*Element[K]{},
+		malloc: set.malloc,
+	}
+	tail.head.fingers[0] = node
+
+	length := 0
+	for n := node; n != nil; n = n.fingers[0] {
+		length++
+	}
+
+	tail.Length = length
+	set.Length -= length
+
+	return tail
+}

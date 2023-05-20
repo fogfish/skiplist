@@ -1,3 +1,11 @@
+//
+// Copyright (C) 2022 Dmitry Kolesnikov
+//
+// This file may be modified and distributed under the terms
+// of the MIT license.  See the LICENSE file for details.
+// https://github.com/fogfish/skiplist
+//
+
 package skiplist_test
 
 import (
@@ -77,6 +85,33 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 
 		it.Then(t).Should(it.Equal(set.Length, 0))
 	})
+
+	t.Run("Split", func(t *testing.T) {
+		for _, k := range []int{0, len(sorted) / 4, len(sorted) / 2, len(sorted) - 1} {
+			head := skiplist.NewSet[K]()
+			for _, x := range seq {
+				head.Add(x)
+			}
+			tail := head.Split(sorted[k])
+
+			hval := head.Values()
+			for i := 0; i < k; i++ {
+				it.Then(t).Should(
+					it.Equal(hval.Key(), sorted[i]),
+				)
+				hval = hval.Next()
+			}
+
+			tval := tail.Values()
+			for i := k; i < len(sorted); i++ {
+				it.Then(t).Should(
+					it.Equal(tval.Key(), sorted[i]),
+				)
+				tval = tval.Next()
+			}
+		}
+	})
+
 }
 
 func TestSetOfIntAddHasCut(t *testing.T) {
@@ -209,7 +244,7 @@ func BenchmarkSetOfString(b *testing.B) {
 // ---------------------------------------------------------------
 
 // go test -fuzz=FuzzSetAddCut
-func FuzzSetAddCut(f *testing.F) {
+func FuzzSetAddHas(f *testing.F) {
 	set := skiplist.NewSet[string]()
 	f.Add("abc")
 
