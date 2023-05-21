@@ -96,14 +96,12 @@ func (f *GF2[K]) Add(key K) (Arc[K], Arc[K]) {
 
 // Put element
 func (f *GF2[K]) Put(arc Arc[K]) bool {
-	if added := f.keys.Add(arc.Hi); !added {
-		return false
-	}
+	added := f.keys.Add(arc.Hi)
 
 	f.arcs[arc.Hi] = arc
 	f.Length = f.keys.Length
 
-	return true
+	return added
 }
 
 // Check elements position on the field

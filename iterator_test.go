@@ -170,6 +170,25 @@ func ForSuite[K skiplist.Num, V any](
 		}
 	})
 
+	t.Run("Join", func(t *testing.T) {
+		for _, k := range []int{0, len(seq) / 4, len(seq) / 2, len(seq) - 1} {
+
+			i := k
+			e := skiplist.Join(gen(seq[k]),
+				func(k1 K, val V) skiplist.Iterator[K, V] {
+					return skiplist.TakeWhile(gen(k1), func(k2 K, val V) bool { return k1 == k2 })
+				},
+			)
+			for has := e != nil; has; has = e.Next() {
+				it.Then(t).Should(
+					it.Equal(e.Key(), seq[i]),
+				)
+				i++
+			}
+			it.Then(t).Should(it.Equal(i, len(seq)))
+		}
+	})
+
 }
 
 func TestForSet(t *testing.T) {

@@ -54,8 +54,34 @@ func TestField(t *testing.T) {
 		e.Next()
 	}
 
+	e = skiplist.ForGF2(gf2, gf2.Successors(0x31))
+	for i := 2; i < len(topo); i++ {
+		it.Then(t).Should(
+			it.Equal(e.Key(), topo[i]),
+		)
+		e.Next()
+	}
+
 	it.Then(t).Should(
 		it.String(gf2.String()).Contain("SkipGF2"),
+	)
+}
+
+func TestFieldPut(t *testing.T) {
+	gf2 := skiplist.NewGF2[uint8]()
+	gf2.Put(skiplist.Arc[uint8]{Rank: 7, Lo: 0, Hi: 0x7f})
+	gf2.Put(skiplist.Arc[uint8]{Rank: 7, Lo: 0x80, Hi: 0xff})
+
+	arc, _ := gf2.Get(0x60)
+	it.Then(t).Should(
+		it.Equal(arc.Lo, 0x00),
+		it.Equal(arc.Hi, 0x7f),
+	)
+
+	arc, _ = gf2.Get(0xa0)
+	it.Then(t).Should(
+		it.Equal(arc.Lo, 0x80),
+		it.Equal(arc.Hi, 0xff),
 	)
 }
 
