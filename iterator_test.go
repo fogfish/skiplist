@@ -189,6 +189,22 @@ func ForSuite[K skiplist.Num, V any](
 		}
 	})
 
+	t.Run("JoinNil", func(t *testing.T) {
+		e := skiplist.Join(nil,
+			func(k1 K, val V) skiplist.Iterator[K, V] { return nil },
+		)
+		it.Then(t).Should(
+			it.Nil(e),
+		)
+
+		e = skiplist.Join(gen(seq[0]),
+			func(k1 K, val V) skiplist.Iterator[K, V] { return nil },
+		)
+		it.Then(t).Should(
+			it.Nil(e),
+		)
+	})
+
 }
 
 func TestForSet(t *testing.T) {
