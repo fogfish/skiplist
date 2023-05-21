@@ -19,13 +19,18 @@ type Num interface {
 }
 
 type GF2[K Num] struct {
-	keys *Set[K]
-	arcs map[K]arc[K]
+	keys   *Set[K]
+	arcs   map[K]Arc[K]
+	Length int
 }
 
-type arc[K Num] struct {
-	rank uint32
-	lo   K
+type Arc[K Num] struct {
+	Rank   uint32
+	Lo, Hi K
+}
+
+func (arc Arc[K]) String() string {
+	return fmt.Sprintf("{ %2d : %8x - %8x | %10d - %10d }", arc.Rank, arc.Lo, arc.Hi, arc.Lo, arc.Hi)
 }
 
 func NewGF2[K Num](opts ...ConfigSet[K]) *GF2[K] {
@@ -35,13 +40,14 @@ func NewGF2[K Num](opts ...ConfigSet[K]) *GF2[K] {
 	keys.Add(top)
 	rnk := uint32(reflect.TypeOf(top).Size() * 8)
 
-	arcs := map[K]arc[K]{
-		top: {rank: rnk, lo: 0},
+	arcs := map[K]Arc[K]{
+		top: {Rank: rnk, Lo: 0, Hi: top},
 	}
 
 	return &GF2[K]{
-		keys: keys,
-		arcs: arcs,
+		keys:   keys,
+		arcs:   arcs,
+		Length: 1,
 	}
 }
 
@@ -52,16 +58,15 @@ func (f *GF2[K]) String() string {
 	for node := f.keys.Values(); node != nil; node = node.Next() {
 		key := node.Key()
 		arc := f.arcs[key]
-		sb.WriteString(
-			fmt.Sprintf("{ %2d : %8x - %8x | %10d - %10d }\n", arc.rank, arc.lo, key, arc.lo, key),
-		)
+		sb.WriteString(arc.String())
+		sb.WriteString("\n")
 	}
 
 	return sb.String()
 }
 
 // Add new element to the field
-func (f *GF2[K]) Add(key K) (K, K, K) {
+func (f *GF2[K]) Add(key K) (Arc[K], Arc[K]) {
 	node := f.keys.Successors(key)
 	if node == nil {
 		panic("non-continuos field")
@@ -70,32 +75,51 @@ func (f *GF2[K]) Add(key K) (K, K, K) {
 	hi := node.key
 	tail := f.arcs[hi]
 
-	if tail.rank == 0 {
-		return tail.lo, hi, hi
+	if tail.Rank == 0 {
+		return tail, tail
 	}
 
-	rnk := tail.rank - 1
-	mid := tail.lo + (hi-tail.lo)/2
+	rnk := tail.Rank - 1
+	mid := tail.Lo + (hi-tail.Lo)/2
 
-	head := arc[K]{rank: rnk, lo: tail.lo}
-	tail.rank, tail.lo = rnk, mid+1
+	head := Arc[K]{Rank: rnk, Lo: tail.Lo, Hi: mid}
+	tail.Rank, tail.Lo = rnk, mid+1
 
 	f.keys.Add(mid)
 	f.arcs[mid] = head
 	f.arcs[hi] = tail
 
-	return head.lo, mid, hi
+	f.Length = f.keys.Length
+
+	return head, tail
+}
+
+// Put element
+func (f *GF2[K]) Put(arc Arc[K]) bool {
+	if added := f.keys.Add(arc.Hi); !added {
+		return false
+	}
+
+	f.arcs[arc.Hi] = arc
+	f.Length = f.keys.Length
+
+	return true
 }
 
 // Check elements position on the field
-func (f *GF2[K]) Has(key K) (K, K) {
+func (f *GF2[K]) Get(key K) (Arc[K], bool) {
 	node := f.keys.Successors(key)
 	if node == nil {
 		panic("non-continuos field")
 	}
 
-	hi := node.key
-	arc := f.arcs[hi]
+	return f.arcs[node.key], true
+}
 
-	return arc.lo, hi
+func (f *GF2[K]) Keys() *Element[K] {
+	return f.keys.Values()
+}
+
+func (f *GF2[K]) Successors(key K) *Element[K] {
+	return f.keys.Successors(key)
 }
