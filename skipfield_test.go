@@ -30,24 +30,59 @@ func TestField(t *testing.T) {
 		{0x38, 0x38, 0x39},
 		{0x39, 0x39, 0x39},
 	} {
-		lo, hi := gf2.Has(key)
+		arc, _ := gf2.Get(key)
 		it.Then(t).Should(
-			it.Equal(lo, x[0]),
-			it.Equal(hi, x[2]),
+			it.Equal(arc.Lo, x[0]),
+			it.Equal(arc.Hi, x[2]),
 		)
 
-		lo, mi, hi := gf2.Add(key)
+		hd, tl := gf2.Add(key)
 		it.Then(t).Should(
-			it.Equal(lo, x[0]),
-			it.Equal(mi, x[1]),
-			it.Equal(hi, x[2]),
+			it.Equal(hd.Lo, x[0]),
+			it.Equal(hd.Hi, x[1]),
+			it.Equal(tl.Hi, x[2]),
 		)
+	}
+
+	topo := []uint8{0x1f, 0x2f, 0x37, 0x38, 0x39, 0x3b, 0x3f, 0x7f, 0xff}
+	e := skiplist.ForGF2(gf2, gf2.Keys())
+
+	for i := 0; i < len(topo); i++ {
+		it.Then(t).Should(
+			it.Equal(e.Key(), topo[i]),
+		)
+		e.Next()
+	}
+
+	e = skiplist.ForGF2(gf2, gf2.Successors(0x31))
+	for i := 2; i < len(topo); i++ {
+		it.Then(t).Should(
+			it.Equal(e.Key(), topo[i]),
+		)
+		e.Next()
 	}
 
 	it.Then(t).Should(
 		it.String(gf2.String()).Contain("SkipGF2"),
 	)
+}
 
+func TestFieldPut(t *testing.T) {
+	gf2 := skiplist.NewGF2[uint8]()
+	gf2.Put(skiplist.Arc[uint8]{Rank: 7, Lo: 0, Hi: 0x7f})
+	gf2.Put(skiplist.Arc[uint8]{Rank: 7, Lo: 0x80, Hi: 0xff})
+
+	arc, _ := gf2.Get(0x60)
+	it.Then(t).Should(
+		it.Equal(arc.Lo, 0x00),
+		it.Equal(arc.Hi, 0x7f),
+	)
+
+	arc, _ = gf2.Get(0xa0)
+	it.Then(t).Should(
+		it.Equal(arc.Lo, 0x80),
+		it.Equal(arc.Hi, 0xff),
+	)
 }
 
 // go test -fuzz=FuzzGF2
@@ -56,9 +91,9 @@ func FuzzGF2(f *testing.F) {
 	f.Add(uint32(1024))
 
 	f.Fuzz(func(t *testing.T, key uint32) {
-		lo, mi, hi := field.Add(key)
-		if lo > mi || mi > hi || lo > hi {
-			t.Errorf("invalid split (%d, %d, %d)", lo, mi, hi)
+		hd, tl := field.Add(key)
+		if !(hd.Lo < hd.Hi && hd.Hi < tl.Lo && tl.Lo < tl.Hi) {
+			t.Errorf("invalid split hd = %v, tl = %v", hd, tl)
 		}
 	})
 }

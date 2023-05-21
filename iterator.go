@@ -50,6 +50,10 @@ func (it *forSet[K]) Next() bool {
 	return it.el != nil
 }
 
+type Getter[K Key, V any] interface {
+	Get(K) (V, bool)
+}
+
 // Iterate over Map elements
 //
 //	seq := skiplist.ForMap(kv, kv.Successor(key))
@@ -65,10 +69,19 @@ func ForMap[K Key, V any](kv *Map[K, V], key *Element[K]) Iterator[K, V] {
 	return &forMap[K, V]{key: key, val: val, kv: kv}
 }
 
+func ForGF2[K Num](gf2 *GF2[K], key *Element[K]) Iterator[K, Arc[K]] {
+	if key == nil {
+		return nil
+	}
+
+	val, _ := gf2.Get(key.key)
+	return &forMap[K, Arc[K]]{key: key, val: val, kv: gf2}
+}
+
 type forMap[K Key, V any] struct {
 	key *Element[K]
 	val V
-	kv  *Map[K, V]
+	kv  Getter[K, V]
 }
 
 func (it *forMap[K, V]) Key() K   { return it.key.key }
@@ -225,6 +238,48 @@ func (plus *plus[K, V]) Next() bool {
 
 	if !hasNext && plus.rhs == nil {
 		return false
+	}
+
+	return true
+}
+
+// Left join
+func Join[K1, K2 Key, V1, V2 any](lhs Iterator[K1, V1], rhs func(K1, V1) Iterator[K2, V2]) Iterator[K2, V2] {
+	if lhs == nil {
+		return nil
+	}
+
+	join := &join[K1, K2, V1, V2]{lhs: lhs, rhs: rhs}
+	for {
+		join.Iterator = join.rhs(join.lhs.Key(), join.lhs.Value())
+		if join.Iterator != nil {
+			return join
+		}
+
+		if !join.lhs.Next() {
+			return nil
+		}
+	}
+}
+
+type join[K1, K2 Key, V1, V2 any] struct {
+	Iterator[K2, V2]
+	lhs Iterator[K1, V1]
+	rhs func(K1, V1) Iterator[K2, V2]
+}
+
+func (join *join[K1, K2, V1, V2]) Next() bool {
+	if !join.Iterator.Next() {
+		for {
+			if !join.lhs.Next() {
+				return false
+			}
+
+			join.Iterator = join.rhs(join.lhs.Key(), join.lhs.Value())
+			if join.Iterator != nil {
+				return true
+			}
+		}
 	}
 
 	return true
