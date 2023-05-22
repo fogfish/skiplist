@@ -67,6 +67,7 @@ func (kv *Map[K, V]) Split(key K) *Map[K, V] {
 	keys := kv.keys.Split(key)
 	values := make(map[K]V)
 
+	kv.Length = kv.keys.Length
 	for e := keys.Values(); e != nil; e = e.Next() {
 		values[e.key] = kv.values[e.key]
 		delete(kv.values, e.key)
@@ -75,5 +76,6 @@ func (kv *Map[K, V]) Split(key K) *Map[K, V] {
 	return &Map[K, V]{
 		keys:   keys,
 		values: values,
+		Length: keys.Length,
 	}
 }
