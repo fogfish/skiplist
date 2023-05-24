@@ -8,26 +8,18 @@
 
 package skiplist
 
-// Generic iterator over skiplist data structures
-// It is design to build operation over sequence of elements
-//
-//	seq := skiplist.ForSet(set, set.Successor(key))
-//	for has := seq != nil; has; has = seq.Next() {
-//		seq.Key()
-//	}
-type Iterator[K Key, V any] interface {
-	Key() K
-	Value() V
-	Next() bool
-}
+import (
+	"github.com/fogfish/golem/trait/pair"
+	"github.com/fogfish/golem/trait/seq"
+)
 
-// Iterate over Set elements
+// Build generic iterate over Set elements
 //
 //	seq := skiplist.ForSet(set, set.Successor(key))
 //	for has := seq != nil; has; has = seq.Next() {
 //		seq.Key()
 //	}
-func ForSet[K Key](set *Set[K], el *Element[K]) Iterator[K, K] {
+func ForSet[K Key](set *Set[K], el *Element[K]) seq.Seq[K] {
 	if el == nil {
 		return nil
 	}
@@ -38,7 +30,6 @@ type forSet[K Key] struct {
 	el *Element[K]
 }
 
-func (it *forSet[K]) Key() K   { return it.el.key }
 func (it *forSet[K]) Value() K { return it.el.key }
 func (it *forSet[K]) Next() bool {
 	if it.el == nil {
@@ -60,7 +51,7 @@ type Getter[K Key, V any] interface {
 //	for has := seq != nil; has; has = seq.Next() {
 //		seq.Key()
 //	}
-func ForMap[K Key, V any](kv *Map[K, V], key *Element[K]) Iterator[K, V] {
+func ForMap[K Key, V any](kv *Map[K, V], key *Element[K]) pair.Seq[K, V] {
 	if key == nil {
 		return nil
 	}
@@ -69,7 +60,7 @@ func ForMap[K Key, V any](kv *Map[K, V], key *Element[K]) Iterator[K, V] {
 	return &forMap[K, V]{key: key, val: val, kv: kv}
 }
 
-func ForGF2[K Num](gf2 *GF2[K], key *Element[K]) Iterator[K, Arc[K]] {
+func ForGF2[K Num](gf2 *GF2[K], key *Element[K]) pair.Seq[K, Arc[K]] {
 	if key == nil {
 		return nil
 	}
@@ -97,190 +88,6 @@ func (it *forMap[K, V]) Next() bool {
 	}
 
 	it.val, _ = it.kv.Get(it.key.key)
-
-	return true
-}
-
-// Take values from iterator while predicate function true
-func TakeWhile[K Key, V any](seq Iterator[K, V], f func(K, V) bool) Iterator[K, V] {
-	if seq == nil || !f(seq.Key(), seq.Value()) {
-		return nil
-	}
-
-	return &takeWhile[K, V]{
-		Iterator: seq,
-		f:        f,
-	}
-}
-
-type takeWhile[K Key, V any] struct {
-	Iterator[K, V]
-	f func(K, V) bool
-}
-
-func (seq *takeWhile[K, V]) Next() bool {
-	if seq.f == nil || seq.Iterator == nil {
-		return false
-	}
-
-	if !seq.Iterator.Next() {
-		return false
-	}
-
-	if !seq.f(seq.Key(), seq.Value()) {
-		seq.f = nil
-		return false
-	}
-
-	return true
-}
-
-// Drop values from iterator while predicate function true
-func DropWhile[K Key, V any](seq Iterator[K, V], f func(K, V) bool) Iterator[K, V] {
-	for {
-		if !f(seq.Key(), seq.Value()) {
-			return seq
-		}
-
-		if !seq.Next() {
-			return nil
-		}
-	}
-}
-
-// Filter values from iterator
-func Filter[K Key, V any](seq Iterator[K, V], f func(K, V) bool) Iterator[K, V] {
-	for {
-		if f(seq.Key(), seq.Value()) {
-			return filter[K, V]{
-				Iterator: seq,
-				f:        f,
-			}
-		}
-
-		if !seq.Next() {
-			return nil
-		}
-	}
-}
-
-type filter[K Key, V any] struct {
-	Iterator[K, V]
-	f func(K, V) bool
-}
-
-func (seq filter[K, V]) Next() bool {
-	if seq.f == nil || seq.Iterator == nil {
-		return false
-	}
-
-	for {
-		if !seq.Iterator.Next() {
-			return false
-		}
-
-		if seq.f(seq.Key(), seq.Value()) {
-			return true
-		}
-	}
-}
-
-// ForEach applies clojure on iterator
-func ForEach[K Key, V any](seq Iterator[K, V], f func(K, V) error) error {
-	for has := seq != nil; has; has = seq.Next() {
-		if err := f(seq.Key(), seq.Value()); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// FMap transform iterator type
-func FMap[K Key, A, B any](seq Iterator[K, A], f func(K, A) B) Iterator[K, B] {
-	return fmap[K, A, B]{Iterator: seq, f: f}
-}
-
-type fmap[K Key, A, B any] struct {
-	Iterator[K, A]
-	f func(K, A) B
-}
-
-func (seq fmap[K, A, B]) Value() B {
-	return seq.f(seq.Iterator.Key(), seq.Iterator.Value())
-}
-
-// Plus operation for iterators add one after another
-func Plus[K Key, V any](lhs, rhs Iterator[K, V]) Iterator[K, V] {
-	if lhs == nil {
-		return rhs
-	}
-
-	if rhs == nil {
-		return lhs
-	}
-
-	return &plus[K, V]{Iterator: lhs, rhs: rhs}
-}
-
-type plus[K Key, V any] struct {
-	Iterator[K, V]
-	rhs Iterator[K, V]
-}
-
-func (plus *plus[K, V]) Next() bool {
-	hasNext := plus.Iterator.Next()
-
-	if !hasNext && plus.rhs != nil {
-		plus.Iterator, plus.rhs = plus.rhs, nil
-		return true
-	}
-
-	if !hasNext && plus.rhs == nil {
-		return false
-	}
-
-	return true
-}
-
-// Left join
-func Join[K1, K2 Key, V1, V2 any](lhs Iterator[K1, V1], rhs func(K1, V1) Iterator[K2, V2]) Iterator[K2, V2] {
-	if lhs == nil {
-		return nil
-	}
-
-	join := &join[K1, K2, V1, V2]{lhs: lhs, rhs: rhs}
-	for {
-		join.Iterator = join.rhs(join.lhs.Key(), join.lhs.Value())
-		if join.Iterator != nil {
-			return join
-		}
-
-		if !join.lhs.Next() {
-			return nil
-		}
-	}
-}
-
-type join[K1, K2 Key, V1, V2 any] struct {
-	Iterator[K2, V2]
-	lhs Iterator[K1, V1]
-	rhs func(K1, V1) Iterator[K2, V2]
-}
-
-func (join *join[K1, K2, V1, V2]) Next() bool {
-	if !join.Iterator.Next() {
-		for {
-			if !join.lhs.Next() {
-				return false
-			}
-
-			join.Iterator = join.rhs(join.lhs.Key(), join.lhs.Value())
-			if join.Iterator != nil {
-				return true
-			}
-		}
-	}
 
 	return true
 }
