@@ -13,14 +13,16 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/fogfish/golem/trait/seq"
+	tseq "github.com/fogfish/golem/trait/seq"
 	"github.com/fogfish/it/v2"
 	"github.com/fogfish/skiplist"
 )
 
-func ForSuite[K skiplist.Num, V any](
+func ForSuite[K skiplist.Num](
 	t *testing.T,
 	seq []K,
-	gen func(K) skiplist.Iterator[K, V],
+	gen func(K) seq.Seq[K],
 ) {
 
 	t.Run("For", func(t *testing.T) {
@@ -30,7 +32,7 @@ func ForSuite[K skiplist.Num, V any](
 			e := gen(seq[k])
 			for has := e != nil; has; has = e.Next() {
 				it.Then(t).Should(
-					it.Equal(e.Key(), seq[i]),
+					it.Equal(e.Value(), seq[i]),
 				)
 				i++
 			}
@@ -47,12 +49,12 @@ func ForSuite[K skiplist.Num, V any](
 			{len(seq) - 1, len(seq) - 1},
 		} {
 			i := k[0]
-			e := skiplist.TakeWhile(gen(seq[i]),
-				func(key K, val V) bool { return key < seq[k[1]] },
+			e := tseq.TakeWhile(gen(seq[i]),
+				func(key K) bool { return key < seq[k[1]] },
 			)
 			for has := e != nil; has; has = e.Next() {
 				it.Then(t).Should(
-					it.Equal(e.Key(), seq[i]),
+					it.Equal(e.Value(), seq[i]),
 				)
 				i++
 			}
@@ -78,12 +80,12 @@ func ForSuite[K skiplist.Num, V any](
 			{len(seq) - 1, len(seq) - 1},
 		} {
 			i := k[1]
-			e := skiplist.DropWhile(gen(seq[i]),
-				func(key K, val V) bool { return key < seq[k[1]] },
+			e := tseq.DropWhile(gen(seq[i]),
+				func(key K) bool { return key < seq[k[1]] },
 			)
 			for has := e != nil; has; has = e.Next() {
 				it.Then(t).Should(
-					it.Equal(e.Key(), seq[i]),
+					it.Equal(e.Value(), seq[i]),
 				)
 				i++
 			}
@@ -95,12 +97,12 @@ func ForSuite[K skiplist.Num, V any](
 	t.Run("Filter", func(t *testing.T) {
 		for _, k := range []int{0, len(seq) / 4, len(seq) / 2, len(seq) - 1} {
 
-			e := skiplist.Filter(gen(seq[k]),
-				func(key K, val V) bool { return key%2 == 0 },
+			e := tseq.Filter(gen(seq[k]),
+				func(key K) bool { return key%2 == 0 },
 			)
 			for has := e != nil; has; has = e.Next() {
 				it.Then(t).Should(
-					it.Equal(e.Key()%2, 0),
+					it.Equal(e.Value()%2, 0),
 				)
 			}
 			if e != nil {
@@ -116,8 +118,8 @@ func ForSuite[K skiplist.Num, V any](
 		for _, k := range []int{0, len(seq) / 4, len(seq) / 2, len(seq) - 1} {
 
 			i := 0
-			err := skiplist.ForEach(gen(seq[k]),
-				func(key K, val V) error {
+			err := tseq.ForEach(gen(seq[k]),
+				func(key K) error {
 					i++
 					return nil
 				},
@@ -134,13 +136,12 @@ func ForSuite[K skiplist.Num, V any](
 		for _, k := range []int{0, len(seq) / 4, len(seq) / 2, len(seq) - 1} {
 
 			i := k
-			e := skiplist.FMap(gen(seq[k]),
-				func(key K, val V) string { return fmt.Sprintf("%v|%v", key, val) },
+			e := tseq.Map(gen(seq[k]),
+				func(key K) string { return fmt.Sprintf("%v", key) },
 			)
 			for has := e != nil; has; has = e.Next() {
 				it.Then(t).Should(
-					it.Equal(e.Key(), seq[i]),
-					it.Equal(e.Value(), fmt.Sprintf("%v|%v", seq[i], seq[i])),
+					it.Equal(e.Value(), fmt.Sprintf("%v", seq[i])),
 				)
 				i++
 			}
@@ -153,10 +154,10 @@ func ForSuite[K skiplist.Num, V any](
 
 			m := len(seq) - k
 			i := 0
-			e := skiplist.Plus(gen(seq[k]), gen(seq[k]))
+			e := tseq.Plus(gen(seq[k]), gen(seq[k]))
 			for has := e != nil; has; has = e.Next() {
 				it.Then(t).Should(
-					it.Equal(e.Key(), seq[k+i%m]),
+					it.Equal(e.Value(), seq[k+i%m]),
 				)
 				i++
 			}
@@ -164,8 +165,8 @@ func ForSuite[K skiplist.Num, V any](
 			v := gen(seq[k])
 			it.Then(t).Should(
 				it.Equal(k+i/2, len(seq)),
-				it.Equiv(skiplist.Plus(v, nil), v),
-				it.Equiv(skiplist.Plus(nil, v), v),
+				it.Equiv(tseq.Plus(v, nil), v),
+				it.Equiv(tseq.Plus(nil, v), v),
 			)
 		}
 	})
@@ -174,35 +175,19 @@ func ForSuite[K skiplist.Num, V any](
 		for _, k := range []int{0, len(seq) / 4, len(seq) / 2, len(seq) - 1} {
 
 			i := k
-			e := skiplist.Join(gen(seq[k]),
-				func(k1 K, val V) skiplist.Iterator[K, V] {
-					return skiplist.TakeWhile(gen(k1), func(k2 K, val V) bool { return k1 == k2 })
+			e := tseq.Join(gen(seq[k]),
+				func(k1 K) tseq.Seq[K] {
+					return tseq.TakeWhile(gen(k1), func(k2 K) bool { return k1 == k2 })
 				},
 			)
 			for has := e != nil; has; has = e.Next() {
 				it.Then(t).Should(
-					it.Equal(e.Key(), seq[i]),
+					it.Equal(e.Value(), seq[i]),
 				)
 				i++
 			}
 			it.Then(t).Should(it.Equal(i, len(seq)))
 		}
-	})
-
-	t.Run("JoinNil", func(t *testing.T) {
-		e := skiplist.Join(nil,
-			func(k1 K, val V) skiplist.Iterator[K, V] { return nil },
-		)
-		it.Then(t).Should(
-			it.Nil(e),
-		)
-
-		e = skiplist.Join(gen(seq[0]),
-			func(k1 K, val V) skiplist.Iterator[K, V] { return nil },
-		)
-		it.Then(t).Should(
-			it.Nil(e),
-		)
 	})
 
 }
@@ -218,7 +203,7 @@ func TestForSet(t *testing.T) {
 	sort.Slice(seq, func(i, j int) bool { return seq[i] < seq[j] })
 
 	ForSuite(t, seq,
-		func(key uint32) skiplist.Iterator[uint32, uint32] {
+		func(key uint32) tseq.Seq[uint32] {
 			return skiplist.ForSet(set, set.Successors(key))
 		},
 	)
@@ -241,7 +226,7 @@ func TestForMap(t *testing.T) {
 	sort.Slice(seq, func(i, j int) bool { return seq[i] < seq[j] })
 
 	ForSuite(t, seq,
-		func(key uint32) skiplist.Iterator[uint32, uint32] {
+		func(key uint32) tseq.Seq[uint32] {
 			return skiplist.ForMap(kv, kv.Successors(key))
 		},
 	)
