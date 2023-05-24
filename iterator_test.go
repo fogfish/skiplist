@@ -13,7 +13,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/fogfish/golem/trait/seq"
 	tseq "github.com/fogfish/golem/trait/seq"
 	"github.com/fogfish/it/v2"
 	"github.com/fogfish/skiplist"
@@ -22,7 +21,7 @@ import (
 func ForSuite[K skiplist.Num](
 	t *testing.T,
 	seq []K,
-	gen func(K) seq.Seq[K],
+	gen func(K) tseq.Seq[K],
 ) {
 
 	t.Run("For", func(t *testing.T) {
