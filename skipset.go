@@ -229,9 +229,30 @@ func (set *Set[K]) Values() *Element[K] {
 }
 
 // Successor elements from set
+// TODO: Successor
 func (set *Set[K]) Successors(key K) *Element[K] {
 	el, _ := set.skip(key)
+
 	return el
+}
+
+// Predecessors elements from set
+func (set *Set[K]) Predecessor(key K) *Element[K] {
+	_, path := set.skip(key)
+	if path[0] == set.head {
+		return nil
+	}
+
+	return path[0]
+}
+
+func (set *Set[K]) Neighbours(key K) (*Element[K], *Element[K]) {
+	el, path := set.skip(key)
+	if path[0] == set.head {
+		return nil, el
+	}
+
+	return path[0], el
 }
 
 // Split set of elements by key

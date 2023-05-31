@@ -63,6 +63,15 @@ func (kv *Map[K, V]) Successors(key K) *Element[K] {
 	return kv.keys.Successors(key)
 }
 
+// Predecessors elements from set
+func (kv *Map[K, V]) Predecessor(key K) *Element[K] {
+	return kv.keys.Predecessor(key)
+}
+
+func (kv *Map[K, V]) Neighbours(key K) (*Element[K], *Element[K]) {
+	return kv.keys.Neighbours(key)
+}
+
 func (kv *Map[K, V]) Split(key K) *Map[K, V] {
 	keys := kv.keys.Split(key)
 	values := make(map[K]V)
