@@ -41,6 +41,35 @@ func (it *forSet[K]) Next() bool {
 	return it.el != nil
 }
 
+// Build generic iterate over Set elements on level N
+//
+//	seq := skiplist.ForSetOn(set, set.ValuesOn(...))
+//	for has := seq != nil; has; has = seq.Next() {
+//		seq.Key()
+//	}
+func ForSetOn[K Key](lvl int, set *Set[K], el *Element[K]) seq.Seq[K] {
+	if el == nil {
+		return nil
+	}
+	return &forSetOn[K]{lvl, el}
+}
+
+type forSetOn[K Key] struct {
+	lvl int
+	el  *Element[K]
+}
+
+func (it *forSetOn[K]) Value() K { return it.el.key }
+func (it *forSetOn[K]) Next() bool {
+	if it.el == nil {
+		return false
+	}
+
+	it.el = it.el.NextOn(it.lvl)
+
+	return it.el != nil
+}
+
 type Getter[K Key, V any] interface {
 	Get(K) (V, bool)
 }
@@ -51,7 +80,7 @@ type Getter[K Key, V any] interface {
 //	for has := seq != nil; has; has = seq.Next() {
 //		seq.Key()
 //	}
-func ForMap[K Key, V any](kv *Map[K, V], key *Element[K]) pair.Seq[K, V] {
+func ForMap[K Key, V any](kv Getter[K, V], key *Element[K]) pair.Seq[K, V] {
 	if key == nil {
 		return nil
 	}

@@ -33,7 +33,7 @@ func (arc Arc[K]) String() string {
 	return fmt.Sprintf("{ %2d : %8x - %8x | %10d - %10d }", arc.Rank, arc.Lo, arc.Hi, arc.Lo, arc.Hi)
 }
 
-func NewGF2[K Num](opts ...ConfigSet[K]) *GF2[K] {
+func NewGF2[K Num](opts ...SetConfig[K]) *GF2[K] {
 	keys := NewSet(opts...)
 
 	top := *new(K) - 1
@@ -67,7 +67,7 @@ func (f *GF2[K]) String() string {
 
 // Add new element to the field
 func (f *GF2[K]) Add(key K) (Arc[K], Arc[K]) {
-	node := f.keys.Successors(key)
+	node := f.keys.Successor(key)
 	if node == nil {
 		panic("non-continuos field")
 	}
@@ -106,7 +106,7 @@ func (f *GF2[K]) Put(arc Arc[K]) bool {
 
 // Check elements position on the field
 func (f *GF2[K]) Get(key K) (Arc[K], bool) {
-	node := f.keys.Successors(key)
+	node := f.keys.Successor(key)
 	if node == nil {
 		panic("non-continuos field")
 	}
@@ -119,5 +119,5 @@ func (f *GF2[K]) Keys() *Element[K] {
 }
 
 func (f *GF2[K]) Successors(key K) *Element[K] {
-	return f.keys.Successors(key)
+	return f.keys.Successor(key)
 }

@@ -21,14 +21,14 @@ import (
 
 // ---------------------------------------------------------------
 
-func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
+func HashMapSuite[K skiplist.Key](t *testing.T, seq []K) {
 	//
 	sorted := make([]K, len(seq))
 	copy(sorted, seq)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
 
 	//
-	kv := skiplist.NewMap[K, K]()
+	kv := skiplist.NewHashMap[K, K]()
 
 	t.Run("Put", func(t *testing.T) {
 		for _, el := range seq {
@@ -54,14 +54,13 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 	})
 
 	t.Run("Keys", func(t *testing.T) {
-		values := kv.Values()
+		values := kv.Keys()
 		for i := 0; i < len(sorted); i++ {
 			val, has := kv.Get(values.Key())
 			it.Then(t).Should(
 				it.True(has),
 				it.Equal(val, sorted[i]),
 				it.Equal(values.Key(), sorted[i]),
-				it.Equal(values.Value(), sorted[i]),
 			)
 			values = values.Next()
 		}
@@ -69,7 +68,7 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 
 	t.Run("Successor", func(t *testing.T) {
 		for _, k := range []int{0, len(sorted) / 4, len(sorted) / 2, len(sorted) - 1} {
-			values := kv.Successor(sorted[k])
+			values := kv.Successors(sorted[k])
 			for i := k; i < len(sorted); i++ {
 				val, has := kv.Get(values.Key())
 				it.Then(t).Should(
@@ -105,13 +104,13 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 
 	t.Run("Split", func(t *testing.T) {
 		for _, k := range []int{0, len(sorted) / 4, len(sorted) / 2, len(sorted) - 1} {
-			head := skiplist.NewMap[K, K]()
+			head := skiplist.NewHashMap[K, K]()
 			for _, x := range seq {
 				head.Put(x, x)
 			}
 			tail := head.Split(sorted[k])
 
-			hval := head.Values()
+			hval := head.Keys()
 			for i := 0; i < k; i++ {
 				val, has := head.Get(hval.Key())
 				_, exist := tail.Get(hval.Key())
@@ -125,7 +124,7 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 				hval = hval.Next()
 			}
 
-			tval := tail.Values()
+			tval := tail.Keys()
 			for i := k; i < len(sorted); i++ {
 				val, has := tail.Get(tval.Key())
 				_, exist := head.Get(tval.Key())
@@ -143,19 +142,19 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 
 }
 
-func TestMapOfIntPutGetCut(t *testing.T) {
+func TestHashMapOfIntPutGetCut(t *testing.T) {
 	HashMapSuite(t, []int{0x67})
 	HashMapSuite(t, []int{0x67, 0xaa})
 	HashMapSuite(t, []int{0x67, 0xaa, 0xb2, 0xd9, 0x56, 0xbd, 0x7c, 0xc6, 0x21, 0xaf, 0x22, 0xcf, 0xb1, 0x69, 0xcb, 0xa8})
 }
 
-func TestMapOfUIntPutGetCut(t *testing.T) {
+func TestHashMapOfUIntPutGetCut(t *testing.T) {
 	HashMapSuite(t, []uint{0x67})
 	HashMapSuite(t, []uint{0x67, 0xaa})
 	HashMapSuite(t, []uint{0x67, 0xaa, 0xb2, 0xd9, 0x56, 0xbd, 0x7c, 0xc6, 0x21, 0xaf, 0x22, 0xcf, 0xb1, 0x69, 0xcb, 0xa8})
 }
 
-func TestMapOfStringPutGetCut(t *testing.T) {
+func TestHashMapOfStringPutGetCut(t *testing.T) {
 	HashMapSuite(t, []string{"67"})
 	HashMapSuite(t, []string{"67", "aa"})
 	HashMapSuite(t, []string{"67", "aa", "b2", "d9", "56", "bd", "7c", "c6", "21", "af", "22", "cf", "b1", "69", "cb", "a8"})
@@ -163,9 +162,9 @@ func TestMapOfStringPutGetCut(t *testing.T) {
 
 // ---------------------------------------------------------------
 
-func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
+func HashMapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 	size := 1000000
-	defMap := skiplist.NewMap[K, K]()
+	defMap := skiplist.NewHashMap[K, K]()
 	defKey := make([]K, size)
 
 	for i := 0; i < size; i++ {
@@ -180,7 +179,7 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 	)
 
 	b.Run("PutToTail", func(b *testing.B) {
-		kv := skiplist.NewMap[K, K]()
+		kv := skiplist.NewHashMap[K, K]()
 
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -191,7 +190,7 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 	})
 
 	b.Run("PutToHead", func(b *testing.B) {
-		kv := skiplist.NewMap[K, K]()
+		kv := skiplist.NewHashMap[K, K]()
 
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -202,7 +201,7 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 	})
 
 	b.Run("PutToRand", func(b *testing.B) {
-		kv := skiplist.NewMap[K, K]()
+		kv := skiplist.NewHashMap[K, K]()
 
 		b.ReportAllocs()
 		b.ResetTimer()
@@ -224,7 +223,7 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			defMap.Successor(defKey[n%size])
+			defMap.Successors(defKey[n%size])
 		}
 	})
 
@@ -232,7 +231,7 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			e := defMap.Successor(defKey[n%size])
+			e := defMap.Successors(defKey[n%size])
 			for i := 0; i < 16 && e != nil; i++ {
 				defMap.Get(e.Key())
 				e = e.Next()
@@ -244,7 +243,7 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			e := defMap.Successor(defKey[n%size])
+			e := defMap.Successors(defKey[n%size])
 			for i := 0; i < 64 && e != nil; i++ {
 				defMap.Get(e.Key())
 				e = e.Next()
@@ -256,7 +255,7 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			e := defMap.Successor(defKey[n%size])
+			e := defMap.Successors(defKey[n%size])
 			for i := 0; i < 64 && e != nil; i++ {
 				defMap.Get(e.Key())
 				e = e.Next()
@@ -265,29 +264,29 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 	})
 }
 
-func BenchmarkMapOfInt(b *testing.B) {
+func BenchmarkHashMapOfInt(b *testing.B) {
 	HashMapBench(b, func(i int) int { return i })
 }
 
-func BenchmarkMapOfUInt(b *testing.B) {
+func BenchmarkHashMapOfUInt(b *testing.B) {
 	HashMapBench(b, func(i int) uint { return uint(i) })
 }
 
-func BenchmarkMapOfString(b *testing.B) {
+func BenchmarkHashMapOfString(b *testing.B) {
 	HashMapBench(b, func(i int) string { return strconv.Itoa(i) })
 }
 
 // ---------------------------------------------------------------
 
 // go test -fuzz=FuzzMapIntPutGet
-func FuzzMapIntPutGet(f *testing.F) {
-	kv := skiplist.NewMap[uint64, string]()
+func FuzzHashMapIntPutGet(f *testing.F) {
+	kv := skiplist.NewHashMap[uint64, string]()
 	f.Add(uint64(123), "abc")
 
 	f.Fuzz(func(t *testing.T, key uint64, val string) {
 		kv.Put(key, val)
 
-		el := kv.Successor(key)
+		el := kv.Successors(key)
 		if el == nil {
 			t.Errorf("pair (%v, %v) should be found", key, val)
 		}
@@ -304,14 +303,14 @@ func FuzzMapIntPutGet(f *testing.F) {
 }
 
 // go test -fuzz=FuzzMapStringPutGet
-func FuzzMapStringPutGet(f *testing.F) {
-	kv := skiplist.NewMap[string, uint64]()
+func FuzzHashMapStringPutGet(f *testing.F) {
+	kv := skiplist.NewHashMap[string, uint64]()
 	f.Add("abc", uint64(123))
 
 	f.Fuzz(func(t *testing.T, key string, val uint64) {
 		kv.Put(key, val)
 
-		el := kv.Successor(key)
+		el := kv.Successors(key)
 		if el == nil {
 			t.Errorf("pair (%v, %v) should be found", key, val)
 		}
@@ -325,5 +324,4 @@ func FuzzMapStringPutGet(f *testing.F) {
 			t.Errorf("pair (%v, %v) should contain %v", key, x, val)
 		}
 	})
-
 }

@@ -62,7 +62,7 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 
 	t.Run("Successor", func(t *testing.T) {
 		for _, k := range []int{0, len(sorted) / 4, len(sorted) / 2, len(sorted) - 1} {
-			values := set.Successors(sorted[k])
+			values := set.Successor(sorted[k])
 			for i := k; i < len(sorted); i++ {
 				it.Then(t).Should(
 					it.Equal(values.Key(), sorted[i]),
@@ -196,7 +196,7 @@ func SetBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			defSet.Successors(defKey[n%size])
+			defSet.Successor(defKey[n%size])
 		}
 	})
 
@@ -204,7 +204,7 @@ func SetBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			e := defSet.Successors(defKey[n%size])
+			e := defSet.Successor(defKey[n%size])
 			for i := 0; i < 16 && e != nil; i++ {
 				e = e.Next()
 			}
@@ -215,7 +215,7 @@ func SetBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			e := defSet.Successors(defKey[n%size])
+			e := defSet.Successor(defKey[n%size])
 			for i := 0; i < 64 && e != nil; i++ {
 				e = e.Next()
 			}
@@ -226,7 +226,7 @@ func SetBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			e := defSet.Successors(defKey[n%size])
+			e := defSet.Successor(defKey[n%size])
 			for i := 0; i < 64 && e != nil; i++ {
 				e = e.Next()
 			}
@@ -248,7 +248,7 @@ func BenchmarkSetOfString(b *testing.B) {
 
 // ---------------------------------------------------------------
 
-// go test -fuzz=FuzzSetAddCut
+// go test -fuzz=FuzzSetAddHas
 func FuzzSetAddHas(f *testing.F) {
 	set := skiplist.NewSet[string]()
 	f.Add("abc")
