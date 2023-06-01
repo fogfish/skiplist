@@ -68,7 +68,7 @@ func HashMapSuite[K skiplist.Key](t *testing.T, seq []K) {
 
 	t.Run("Successor", func(t *testing.T) {
 		for _, k := range []int{0, len(sorted) / 4, len(sorted) / 2, len(sorted) - 1} {
-			values := kv.Successors(sorted[k])
+			values := kv.Successor(sorted[k])
 			for i := k; i < len(sorted); i++ {
 				val, has := kv.Get(values.Key())
 				it.Then(t).Should(
@@ -223,7 +223,7 @@ func HashMapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			defMap.Successors(defKey[n%size])
+			defMap.Successor(defKey[n%size])
 		}
 	})
 
@@ -231,7 +231,7 @@ func HashMapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			e := defMap.Successors(defKey[n%size])
+			e := defMap.Successor(defKey[n%size])
 			for i := 0; i < 16 && e != nil; i++ {
 				defMap.Get(e.Key())
 				e = e.Next()
@@ -243,7 +243,7 @@ func HashMapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			e := defMap.Successors(defKey[n%size])
+			e := defMap.Successor(defKey[n%size])
 			for i := 0; i < 64 && e != nil; i++ {
 				defMap.Get(e.Key())
 				e = e.Next()
@@ -255,7 +255,7 @@ func HashMapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			e := defMap.Successors(defKey[n%size])
+			e := defMap.Successor(defKey[n%size])
 			for i := 0; i < 64 && e != nil; i++ {
 				defMap.Get(e.Key())
 				e = e.Next()
@@ -286,7 +286,7 @@ func FuzzHashMapIntPutGet(f *testing.F) {
 	f.Fuzz(func(t *testing.T, key uint64, val string) {
 		kv.Put(key, val)
 
-		el := kv.Successors(key)
+		el := kv.Successor(key)
 		if el == nil {
 			t.Errorf("pair (%v, %v) should be found", key, val)
 		}
@@ -310,7 +310,7 @@ func FuzzHashMapStringPutGet(f *testing.F) {
 	f.Fuzz(func(t *testing.T, key string, val uint64) {
 		kv.Put(key, val)
 
-		el := kv.Successors(key)
+		el := kv.Successor(key)
 		if el == nil {
 			t.Errorf("pair (%v, %v) should be found", key, val)
 		}

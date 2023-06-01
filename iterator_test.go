@@ -226,13 +226,13 @@ func TestForMap(t *testing.T) {
 
 	ForSuite(t, seq,
 		func(key uint32) tseq.Seq[uint32] {
-			return skiplist.ForMap[uint32, uint32](kv, kv.Successors(key))
+			return skiplist.ForHashMap[uint32, uint32](kv, kv.Successor(key))
 		},
 	)
 
 	t.Run("Nil", func(t *testing.T) {
 		it.Then(t).Should(
-			it.Nil(skiplist.ForMap[uint32, uint32](kv, nil)),
+			it.Nil(skiplist.ForHashMap[uint32, uint32](kv, nil)),
 		)
 	})
 }

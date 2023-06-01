@@ -47,7 +47,7 @@ func main() {
 
 	// successors
 	fmt.Println("\n==> successors (of)")
-	for e := skipset.Successors("of"); e != nil; e = e.Next() {
+	for e := skipset.Successor("of"); e != nil; e = e.Next() {
 		fmt.Printf(" %s", e.Key())
 	}
 	fmt.Println()

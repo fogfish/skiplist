@@ -43,15 +43,14 @@ func main() {
 
 	// values
 	fmt.Println("\n==> values")
-	for e := skipmap.Keys(); e != nil; e = e.Next() {
-		val, _ := skipmap.Get(e.Key())
-		fmt.Printf(" (%d, %s)", e.Key(), val)
+	for e := skipmap.Values(); e != nil; e = e.Next() {
+		fmt.Printf(" (%d, %s)", e.Key(), e.Value())
 	}
 	fmt.Println()
 
 	// successors
 	fmt.Println("\n==> successors (35)")
-	for e := skipmap.Successors(35); e != nil; e = e.Next() {
+	for e := skipmap.Successor(35); e != nil; e = e.Next() {
 		val, _ := skipmap.Get(e.Key())
 		fmt.Printf(" (%d, %s)", e.Key(), val)
 	}

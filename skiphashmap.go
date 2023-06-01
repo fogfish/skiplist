@@ -59,7 +59,7 @@ func (kv *HashMap[K, V]) Keys() *Element[K] {
 	return kv.keys.Values()
 }
 
-func (kv *HashMap[K, V]) Successors(key K) *Element[K] {
+func (kv *HashMap[K, V]) Successor(key K) *Element[K] {
 	return kv.keys.Successor(key)
 }
 
