@@ -207,6 +207,12 @@ func TestForSet(t *testing.T) {
 		},
 	)
 
+	ForSuite(t, seq,
+		func(key uint32) tseq.Seq[uint32] {
+			return skiplist.ForSetOn(0, set, set.Successor(key))
+		},
+	)
+
 	t.Run("Nil", func(t *testing.T) {
 		it.Then(t).Should(
 			it.Nil(skiplist.ForSet(set, nil)),
@@ -214,7 +220,7 @@ func TestForSet(t *testing.T) {
 	})
 }
 
-func TestForMap(t *testing.T) {
+func TestForHashMap(t *testing.T) {
 	seq := []uint32{0x67, 0xaa, 0xb2, 0xd9, 0x56, 0xbd, 0x7c, 0xc6, 0x21, 0xaf, 0x22, 0xcf, 0xb1, 0x69, 0xcb, 0xa8}
 
 	kv := skiplist.NewHashMap[uint32, uint32]()
@@ -233,6 +239,35 @@ func TestForMap(t *testing.T) {
 	t.Run("Nil", func(t *testing.T) {
 		it.Then(t).Should(
 			it.Nil(skiplist.ForHashMap[uint32, uint32](kv, nil)),
+		)
+	})
+}
+
+func TestForMap(t *testing.T) {
+	seq := []uint32{0x67, 0xaa, 0xb2, 0xd9, 0x56, 0xbd, 0x7c, 0xc6, 0x21, 0xaf, 0x22, 0xcf, 0xb1, 0x69, 0xcb, 0xa8}
+
+	kv := skiplist.NewMap[uint32, uint32]()
+	for _, x := range seq {
+		kv.Put(x, x)
+	}
+
+	sort.Slice(seq, func(i, j int) bool { return seq[i] < seq[j] })
+
+	ForSuite(t, seq,
+		func(key uint32) tseq.Seq[uint32] {
+			return skiplist.ForMap[uint32, uint32](kv, kv.Successor(key))
+		},
+	)
+
+	ForSuite(t, seq,
+		func(key uint32) tseq.Seq[uint32] {
+			return skiplist.ForMapOn[uint32, uint32](0, kv, kv.Successor(key))
+		},
+	)
+
+	t.Run("Nil", func(t *testing.T) {
+		it.Then(t).Should(
+			it.Nil(skiplist.ForMap[uint32, uint32](kv, nil)),
 		)
 	})
 }
