@@ -36,6 +36,9 @@ func (el *Element[K]) Key() K { return el.key }
 //	for e := set.Successor(...); e != nil; e.Next() { /* ... */}
 func (el *Element[K]) Next() *Element[K] { return el.fingers[0] }
 
+// Rank of node
+func (el *Element[K]) Rank() int { return len(el.fingers) }
+
 // Return next element in the set on level.
 // Use for-loop to iterate through set elements
 //
@@ -314,6 +317,49 @@ type SetL[K Key] Set[K]
 
 func ToSetL[K Key](s *Set[K]) *SetL[K] { return (*SetL[K])(s) }
 
+func (s *SetL[K]) PushH(seq []K) *Element[K] {
+	set := (*Set[K])(s)
+
+	for i := 1; i < len(seq); i++ {
+		if set.null != seq[i] {
+			el, _ := set.skip(0, seq[i])
+			set.head.fingers[i-1] = el
+		}
+	}
+
+	return set.head
+}
+
+// Explicitly create node with given topology
+func (s *SetL[K]) Push(seq []K) *Element[K] {
+	set := (*Set[K])(s)
+
+	var node *Element[K]
+	if set.malloc == nil {
+		node = &Element[K]{fingers: make([]*Element[K], len(seq)-1)}
+	} else {
+		node = set.malloc.Alloc(seq[0])
+	}
+	node.key = seq[0]
+
+	for i := 1; i < len(seq); i++ {
+		if set.null != seq[i] {
+			el, _ := set.skip(0, seq[i])
+			node.fingers[i-1] = el
+		}
+	}
+
+	for i := 1; i < len(seq); i++ {
+		set.head.fingers[i-1] = node
+	}
+
+	return node
+}
+
+func (s *SetL[K]) Head() *Element[K] {
+	return s.head
+}
+
 // Add element to set, return true if element is new
 // The element would not be promoted higher than defined level
 func (s *SetL[K]) Add(level int, key K) bool {
@@ -355,6 +401,11 @@ func (s *SetL[K]) Cut(level int, node *Element[K]) *Element[K] {
 
 	to := from.NextOn(level)
 	segment := from.Next()
+
+	// sometimes segment is equal to 0
+	if segment == to {
+		return nil
+	}
 
 	var lastOnSegment *Element[K]
 

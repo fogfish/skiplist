@@ -38,6 +38,9 @@ func (el *Pair[K, V]) Value() V { return el.value }
 //	for e := set.Successor(...); e != nil; e.Next() { /* ... */}
 func (el *Pair[K, V]) Next() *Pair[K, V] { return el.fingers[0] }
 
+// Rank of node
+func (el *Pair[K, V]) Rank() int { return len(el.fingers) }
+
 // Return next element in the set on level.
 // Use for-loop to iterate through set elements
 //
@@ -64,6 +67,8 @@ func (el *Pair[K, V]) String() string {
 	return fmt.Sprintf("{ %4v\t|%s }", el.key, fingers)
 }
 
+// --------------------------------------------------------------------------------------
+
 // Map of Elements
 type Map[K Key, V any] struct {
 	//
@@ -75,7 +80,7 @@ type Map[K Key, V any] struct {
 
 	//
 	// number of elements in the set, O(1)
-	Length int
+	length int
 
 	//
 	// random generator
@@ -100,7 +105,7 @@ func NewMap[K Key, V any](opts ...MapConfig[K, V]) *Map[K, V] {
 	set := &Map[K, V]{
 		head:   head,
 		null:   *new(K),
-		Length: 0,
+		length: 0,
 		random: rand.New(rand.NewSource(time.Now().UnixNano())),
 		path:   [L]*Pair[K, V]{},
 		ptable: probabilityTable,
@@ -127,6 +132,10 @@ func (kv *Map[K, V]) String() string {
 	}
 
 	return sb.String()
+}
+
+func (kv *Map[K, V]) Length() int {
+	return kv.length
 }
 
 // Max level of skip list
@@ -175,7 +184,7 @@ func (kv *Map[K, V]) Put(key K, val V) bool {
 		path[level].fingers[level] = el
 	}
 
-	kv.Length++
+	kv.length++
 	return true
 }
 
@@ -231,7 +240,7 @@ func (kv *Map[K, V]) Cut(key K) (V, bool) {
 		}
 	}
 
-	kv.Length--
+	kv.length--
 
 	if kv.malloc != nil {
 		kv.malloc.Free(key)
@@ -264,7 +273,7 @@ func (kv *Map[K, V]) Split(key K) *Map[K, V] {
 	tail := &Map[K, V]{
 		head:   head,
 		null:   *new(K),
-		Length: 0,
+		length: 0,
 		random: kv.random,
 		path:   [L]*Pair[K, V]{},
 		ptable: kv.ptable,
@@ -277,16 +286,61 @@ func (kv *Map[K, V]) Split(key K) *Map[K, V] {
 		length++
 	}
 
-	tail.Length = length
-	kv.Length -= length
+	tail.length = length
+	kv.length -= length
 
 	return tail
 }
+
+// --------------------------------------------------------------------------------------
 
 // MapL[K, V] type projects Map[K, V] with all ops on level N
 type MapL[K Key, V any] Map[K, V]
 
 func ToMapL[K Key, V any](m *Map[K, V]) *MapL[K, V] { return (*MapL[K, V])(m) }
+
+func (m *MapL[K, V]) PushH(seq []K) *Pair[K, V] {
+	kv := (*Map[K, V])(m)
+
+	for i := 1; i < len(seq); i++ {
+		if kv.null != seq[i] {
+			el, _ := kv.skip(0, seq[i])
+			kv.head.fingers[i-1] = el
+		}
+	}
+
+	return kv.head
+}
+
+// Explicitly create node with given topology
+func (m *MapL[K, V]) Push(seq []K) *Pair[K, V] {
+	kv := (*Map[K, V])(m)
+
+	var node *Pair[K, V]
+	if kv.malloc == nil {
+		node = &Pair[K, V]{fingers: make([]*Pair[K, V], len(seq)-1)}
+	} else {
+		node = kv.malloc.Alloc(seq[0])
+	}
+	node.key = seq[0]
+
+	for i := 1; i < len(seq); i++ {
+		if kv.null != seq[i] {
+			el, _ := kv.skip(0, seq[i])
+			node.fingers[i-1] = el
+		}
+	}
+
+	for i := 1; i < len(seq); i++ {
+		kv.head.fingers[i-1] = node
+	}
+
+	return node
+}
+
+func (s *MapL[K, V]) Head() *Pair[K, V] {
+	return s.head
+}
 
 // Add element to set, return true if element is new
 // The element would not be promoted higher than defined level
@@ -307,17 +361,32 @@ func (m *MapL[K, V]) Put(level int, key K, val V) bool {
 		path[level].fingers[level] = el
 	}
 
-	kv.Length++
+	kv.length++
 	return true
 }
 
 // Cut segment on the level
-func (m *MapL[K, V]) Cut(level int, from *Pair[K, V]) *Pair[K, V] {
+func (m *MapL[K, V]) Cut(level int, node *Pair[K, V]) *Pair[K, V] {
+	if node == nil {
+		return nil
+	}
+
 	kv := (*Map[K, V])(m)
 
-	to := from.NextOn(level)
+	from := node
+	if from == m.head.fingers[0] {
+		// list.head is not available to client.
+		// the cut of first segments should be started from head
+		from = m.head
+	}
 
-	segment, path := kv.skip(0, from.Next().key)
+	to := from.NextOn(level)
+	segment := from.Next()
+
+	// sometimes segment is equal to 0
+	if segment == to {
+		return nil
+	}
 
 	var lastOnSegment *Pair[K, V]
 
@@ -326,19 +395,27 @@ func (m *MapL[K, V]) Cut(level int, from *Pair[K, V]) *Pair[K, V] {
 		lastOnSegment = pathToHi[0]
 	}
 
-	for level := 0; level < L; level++ {
-		if path[level] != nil {
-			path[level].fingers[level] = to
+	for i := 0; i < len(from.fingers); i++ {
+		if from.fingers[i] != nil && (to == nil || from.fingers[i].key < to.key) {
+			from.fingers[i] = to
 		}
 	}
 
 	if to != nil {
+		// detach last segment from list
 		for i := 0; i < len(lastOnSegment.fingers); i++ {
 			lastOnSegment.fingers[i] = nil
 		}
 	}
 
+	length := 0
+	for n := segment; n != nil; n = n.fingers[0] {
+		length++
+	}
+	kv.length -= length
+
 	return segment
+
 }
 
 // All set elements on defined level
