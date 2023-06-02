@@ -84,7 +84,7 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 
 	t.Run("String", func(t *testing.T) {
 		it.Then(t).Should(
-			it.String(kv.String()).Contain("SkipSet"),
+			it.String(kv.String()).Contain("SkipMap"),
 		)
 	})
 
@@ -144,21 +144,21 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 }
 
 func TestMapOfIntPutGetCut(t *testing.T) {
-	HashMapSuite(t, []int{0x67})
-	HashMapSuite(t, []int{0x67, 0xaa})
-	HashMapSuite(t, []int{0x67, 0xaa, 0xb2, 0xd9, 0x56, 0xbd, 0x7c, 0xc6, 0x21, 0xaf, 0x22, 0xcf, 0xb1, 0x69, 0xcb, 0xa8})
+	MapSuite(t, []int{0x67})
+	MapSuite(t, []int{0x67, 0xaa})
+	MapSuite(t, []int{0x67, 0xaa, 0xb2, 0xd9, 0x56, 0xbd, 0x7c, 0xc6, 0x21, 0xaf, 0x22, 0xcf, 0xb1, 0x69, 0xcb, 0xa8})
 }
 
 func TestMapOfUIntPutGetCut(t *testing.T) {
-	HashMapSuite(t, []uint{0x67})
-	HashMapSuite(t, []uint{0x67, 0xaa})
-	HashMapSuite(t, []uint{0x67, 0xaa, 0xb2, 0xd9, 0x56, 0xbd, 0x7c, 0xc6, 0x21, 0xaf, 0x22, 0xcf, 0xb1, 0x69, 0xcb, 0xa8})
+	MapSuite(t, []uint{0x67})
+	MapSuite(t, []uint{0x67, 0xaa})
+	MapSuite(t, []uint{0x67, 0xaa, 0xb2, 0xd9, 0x56, 0xbd, 0x7c, 0xc6, 0x21, 0xaf, 0x22, 0xcf, 0xb1, 0x69, 0xcb, 0xa8})
 }
 
 func TestMapOfStringPutGetCut(t *testing.T) {
-	HashMapSuite(t, []string{"67"})
-	HashMapSuite(t, []string{"67", "aa"})
-	HashMapSuite(t, []string{"67", "aa", "b2", "d9", "56", "bd", "7c", "c6", "21", "af", "22", "cf", "b1", "69", "cb", "a8"})
+	MapSuite(t, []string{"67"})
+	MapSuite(t, []string{"67", "aa"})
+	MapSuite(t, []string{"67", "aa", "b2", "d9", "56", "bd", "7c", "c6", "21", "af", "22", "cf", "b1", "69", "cb", "a8"})
 }
 
 // ---------------------------------------------------------------
@@ -266,15 +266,15 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 }
 
 func BenchmarkMapOfInt(b *testing.B) {
-	HashMapBench(b, func(i int) int { return i })
+	MapBench(b, func(i int) int { return i })
 }
 
 func BenchmarkMapOfUInt(b *testing.B) {
-	HashMapBench(b, func(i int) uint { return uint(i) })
+	MapBench(b, func(i int) uint { return uint(i) })
 }
 
 func BenchmarkMapOfString(b *testing.B) {
-	HashMapBench(b, func(i int) string { return strconv.Itoa(i) })
+	MapBench(b, func(i int) string { return strconv.Itoa(i) })
 }
 
 // ---------------------------------------------------------------
