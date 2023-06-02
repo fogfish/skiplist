@@ -11,8 +11,6 @@ package skiplist
 type HashMap[K Key, V any] struct {
 	keys   *Set[K]
 	values map[K]V
-
-	Length int
 }
 
 func NewHashMap[K Key, V any](opts ...SetConfig[K]) *HashMap[K, V] {
@@ -21,11 +19,14 @@ func NewHashMap[K Key, V any](opts ...SetConfig[K]) *HashMap[K, V] {
 	return &HashMap[K, V]{
 		keys:   keys,
 		values: make(map[K]V),
-		Length: 0,
 	}
 }
 
 func (kv *HashMap[K, V]) String() string { return kv.keys.String() }
+
+func (set *HashMap[K, V]) Length() int { return set.keys.length }
+
+func (set *HashMap[K, V]) Level() int { return set.keys.Level() }
 
 func (kv *HashMap[K, V]) Put(key K, val V) bool {
 	if _, has := kv.values[key]; has {
@@ -35,7 +36,6 @@ func (kv *HashMap[K, V]) Put(key K, val V) bool {
 
 	kv.values[key] = val
 	kv.keys.Add(key)
-	kv.Length = kv.keys.Length
 	return true
 }
 
@@ -49,7 +49,6 @@ func (kv *HashMap[K, V]) Cut(key K) (V, bool) {
 	if has {
 		delete(kv.values, key)
 		kv.keys.Cut(key)
-		kv.Length = kv.keys.Length
 	}
 
 	return val, has
@@ -63,11 +62,18 @@ func (kv *HashMap[K, V]) Successor(key K) *Element[K] {
 	return kv.keys.Successor(key)
 }
 
+func (kv *HashMap[K, V]) Predecessor(key K) *Element[K] {
+	return kv.keys.Predecessor(key)
+}
+
+func (kv *HashMap[K, V]) Neighbours(key K) (*Element[K], *Element[K]) {
+	return kv.keys.Neighbours(key)
+}
+
 func (kv *HashMap[K, V]) Split(key K) *HashMap[K, V] {
 	keys := kv.keys.Split(key)
 	values := make(map[K]V)
 
-	kv.Length = kv.keys.Length
 	for e := keys.Values(); e != nil; e = e.Next() {
 		values[e.key] = kv.values[e.key]
 		delete(kv.values, e.key)
@@ -76,9 +82,10 @@ func (kv *HashMap[K, V]) Split(key K) *HashMap[K, V] {
 	return &HashMap[K, V]{
 		keys:   keys,
 		values: values,
-		Length: keys.Length,
 	}
 }
+
+// --------------------------------------------------------------------------------------
 
 // HashMapL[K] type projects HashMap[K] with all ops on level N
 type HashMapL[K Key, V any] HashMap[K, V]
@@ -95,7 +102,6 @@ func (m *HashMapL[K, V]) Put(level int, key K, val V) bool {
 
 	kv.values[key] = val
 	ToSetL(kv.keys).Add(level, key)
-	kv.Length = kv.keys.Length
 	return true
 }
 
@@ -106,7 +112,6 @@ func (m *HashMapL[K, V]) Cut(level int, from *Element[K]) map[K]V {
 	keys := ToSetL(kv.keys).Cut(level, from)
 	values := make(map[K]V)
 
-	kv.Length = kv.keys.Length
 	for e := keys; e != nil; e = e.Next() {
 		values[e.key] = kv.values[e.key]
 		delete(kv.values, e.key)
@@ -125,4 +130,14 @@ func (m *HashMapL[K, V]) Values(level int) *Element[K] {
 func (m *HashMapL[K, V]) Successor(level int, key K) *Element[K] {
 	kv := (*HashMap[K, V])(m)
 	return ToSetL(kv.keys).Successor(level, key)
+}
+
+func (m *HashMapL[K, V]) Predecessor(level int, key K) *Element[K] {
+	kv := (*HashMap[K, V])(m)
+	return kv.keys.Predecessor(key)
+}
+
+func (m *HashMapL[K, V]) Neighbours(level int, key K) (*Element[K], *Element[K]) {
+	kv := (*HashMap[K, V])(m)
+	return kv.keys.Neighbours(key)
 }

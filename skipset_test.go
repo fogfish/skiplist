@@ -28,7 +28,12 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
 
 	//
-	set := skiplist.NewSet[K]()
+	set := skiplist.NewSet[K](
+		skiplist.SetWithRandomSource[K](rand.NewSource(0x12345678)),
+		skiplist.SetWithAllocator[K](nil),
+		skiplist.SetWithProbability[K](0.5),
+		skiplist.SetWithBlockSize[K](32),
+	)
 
 	t.Run("Add", func(t *testing.T) {
 		for _, el := range seq {
@@ -39,7 +44,10 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 			)
 		}
 
-		it.Then(t).Should(it.Equal(set.Length, len(seq)))
+		it.Then(t).Should(
+			it.Equal(set.Length(), len(seq)),
+			it.Less(set.Level(), skiplist.L),
+		)
 	})
 
 	t.Run("Has", func(t *testing.T) {
@@ -87,7 +95,7 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 			)
 		}
 
-		it.Then(t).Should(it.Equal(set.Length, 0))
+		it.Then(t).Should(it.Equal(set.Length(), 0))
 	})
 
 	t.Run("Split", func(t *testing.T) {

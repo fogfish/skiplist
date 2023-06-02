@@ -62,6 +62,8 @@ func (el *Element[K]) String() string {
 	return fmt.Sprintf("{ %4v\t|%s }", el.key, fingers)
 }
 
+// --------------------------------------------------------------------------------------
+
 // Set of Elements
 type Set[K Key] struct {
 	//
@@ -73,7 +75,7 @@ type Set[K Key] struct {
 
 	//
 	// number of elements in the set, O(1)
-	Length int
+	length int
 
 	//
 	// random generator
@@ -99,8 +101,8 @@ func NewSet[K Key](opts ...SetConfig[K]) *Set[K] {
 	set := &Set[K]{
 		head:   head,
 		null:   *new(K),
-		Length: 0,
-		random: rand.New(rand.NewSource(time.Now().UnixNano())),
+		length: 0,
+		random: rand.NewSource(time.Now().UnixNano()),
 		path:   [L]*Element[K]{},
 		ptable: probabilityTable,
 		malloc: nil,
@@ -126,6 +128,10 @@ func (set *Set[K]) String() string {
 	}
 
 	return sb.String()
+}
+
+func (set *Set[K]) Length() int {
+	return set.length
 }
 
 // Max level of skip list
@@ -174,7 +180,7 @@ func (set *Set[K]) Add(key K) bool {
 		path[level].fingers[level] = el
 	}
 
-	set.Length++
+	set.length++
 	return true
 }
 
@@ -229,7 +235,7 @@ func (set *Set[K]) Cut(key K) bool {
 		}
 	}
 
-	set.Length--
+	set.length--
 
 	if set.malloc != nil {
 		set.malloc.Free(key)
@@ -243,10 +249,29 @@ func (set *Set[K]) Values() *Element[K] {
 	return set.head.fingers[0]
 }
 
-// Successor elements from set
+// Successor elements of key
 func (set *Set[K]) Successor(key K) *Element[K] {
 	el, _ := set.skip(0, key)
 	return el
+}
+
+// Predecessor elements of key
+func (set *Set[K]) Predecessor(key K) *Element[K] {
+	_, path := set.skip(0, key)
+	if path[0] == set.head {
+		return nil
+	}
+
+	return path[0]
+}
+
+func (set *Set[K]) Neighbours(key K) (*Element[K], *Element[K]) {
+	el, path := set.skip(0, key)
+	if path[0] == set.head {
+		return nil, el
+	}
+
+	return path[0], el
 }
 
 // Split set of elements by key
@@ -263,7 +288,7 @@ func (set *Set[K]) Split(key K) *Set[K] {
 	tail := &Set[K]{
 		head:   head,
 		null:   *new(K),
-		Length: 0,
+		length: 0,
 		random: set.random,
 		path:   [L]*Element[K]{},
 		ptable: set.ptable,
@@ -276,11 +301,13 @@ func (set *Set[K]) Split(key K) *Set[K] {
 		length++
 	}
 
-	tail.Length = length
-	set.Length -= length
+	tail.length = length
+	set.length -= length
 
 	return tail
 }
+
+// --------------------------------------------------------------------------------------
 
 // SetL[K] type projects Set[K] with all ops on level N
 type SetL[K Key] Set[K]
@@ -305,17 +332,29 @@ func (s *SetL[K]) Add(level int, key K) bool {
 		path[level].fingers[level] = el
 	}
 
-	set.Length++
+	set.length++
 	return true
 }
 
+// TODO: predecessor
+
 // Cut segment on the level
-func (s *SetL[K]) Cut(level int, from *Element[K]) *Element[K] {
+func (s *SetL[K]) Cut(level int, node *Element[K]) *Element[K] {
+	if node == nil {
+		return nil
+	}
+
 	set := (*Set[K])(s)
 
-	to := from.NextOn(level)
+	from := node
+	if from == s.head.fingers[0] {
+		// list.head is not available to client.
+		// the cut of first segments should be started from head
+		from = s.head
+	}
 
-	segment, path := set.skip(0, from.Next().key)
+	to := from.NextOn(level)
+	segment := from.Next()
 
 	var lastOnSegment *Element[K]
 
@@ -324,17 +363,24 @@ func (s *SetL[K]) Cut(level int, from *Element[K]) *Element[K] {
 		lastOnSegment = pathToHi[0]
 	}
 
-	for level := 0; level < L; level++ {
-		if path[level] != nil {
-			path[level].fingers[level] = to
+	for i := 0; i < len(from.fingers); i++ {
+		if from.fingers[i] != nil && (to == nil || from.fingers[i].key < to.key) {
+			from.fingers[i] = to
 		}
 	}
 
 	if to != nil {
+		// detach last segment from list
 		for i := 0; i < len(lastOnSegment.fingers); i++ {
 			lastOnSegment.fingers[i] = nil
 		}
 	}
+
+	length := 0
+	for n := segment; n != nil; n = n.fingers[0] {
+		length++
+	}
+	set.length -= length
 
 	return segment
 }
@@ -355,6 +401,29 @@ func (s *SetL[K]) Successor(level int, key K) *Element[K] {
 	el, _ := set.skip(level, key)
 	return el
 }
+
+// Predecessor elements of key
+func (s *SetL[K]) Predecessor(level int, key K) *Element[K] {
+	set := (*Set[K])(s)
+	_, path := set.skip(level, key)
+	if path[level] == set.head {
+		return nil
+	}
+
+	return path[level]
+}
+
+func (s *SetL[K]) Neighbours(level int, key K) (*Element[K], *Element[K]) {
+	set := (*Set[K])(s)
+	el, path := set.skip(level, key)
+	if path[level] == set.head {
+		return nil, el
+	}
+
+	return path[level], el
+}
+
+// --------------------------------------------------------------------------------------
 
 // Configure Set properties
 type SetConfig[K Key] func(*Set[K])

@@ -19,9 +19,8 @@ type Num interface {
 }
 
 type GF2[K Num] struct {
-	keys   *Set[K]
-	arcs   map[K]Arc[K]
-	Length int
+	keys *Set[K]
+	arcs map[K]Arc[K]
 }
 
 type Arc[K Num] struct {
@@ -45,9 +44,8 @@ func NewGF2[K Num](opts ...SetConfig[K]) *GF2[K] {
 	}
 
 	return &GF2[K]{
-		keys:   keys,
-		arcs:   arcs,
-		Length: 1,
+		keys: keys,
+		arcs: arcs,
 	}
 }
 
@@ -64,6 +62,8 @@ func (f *GF2[K]) String() string {
 
 	return sb.String()
 }
+
+func (f *GF2[K]) Length() int { return f.keys.length }
 
 // Add new element to the field
 func (f *GF2[K]) Add(key K) (Arc[K], Arc[K]) {
@@ -89,8 +89,6 @@ func (f *GF2[K]) Add(key K) (Arc[K], Arc[K]) {
 	f.arcs[mid] = head
 	f.arcs[hi] = tail
 
-	f.Length = f.keys.Length
-
 	return head, tail
 }
 
@@ -99,7 +97,6 @@ func (f *GF2[K]) Put(arc Arc[K]) bool {
 	added := f.keys.Add(arc.Hi)
 
 	f.arcs[arc.Hi] = arc
-	f.Length = f.keys.Length
 
 	return added
 }
