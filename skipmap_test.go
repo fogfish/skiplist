@@ -40,7 +40,10 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 			)
 		}
 
-		it.Then(t).Should(it.Equal(kv.Length, len(seq)))
+		it.Then(t).Should(
+			it.Equal(kv.Length(), len(seq)),
+			it.Less(kv.Level(), skiplist.L),
+		)
 	})
 
 	t.Run("Get", func(t *testing.T) {
@@ -100,7 +103,7 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 			)
 		}
 
-		it.Then(t).Should(it.Equal(kv.Length, 0))
+		it.Then(t).Should(it.Equal(kv.Length(), 0))
 	})
 
 	t.Run("Split", func(t *testing.T) {
