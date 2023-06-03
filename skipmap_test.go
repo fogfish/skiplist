@@ -28,7 +28,12 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
 
 	//
-	kv := skiplist.NewMap[K, K]()
+	kv := skiplist.NewMap[K, K](
+		skiplist.MapWithRandomSource[K, K](rand.NewSource(0x12345678)),
+		skiplist.MapWithAllocator[K, K](nil),
+		skiplist.MapWithProbability[K, K](0.5),
+		skiplist.MapWithBlockSize[K, K](32),
+	)
 
 	t.Run("Put", func(t *testing.T) {
 		f := func(has bool, node *skiplist.Pair[K, K]) bool { return has }
@@ -294,7 +299,7 @@ func FuzzMapIntPutGet(f *testing.F) {
 
 		el := kv.Successor(key)
 		if el == nil {
-			t.Errorf("pair (%v, %v) should be found", key, val)
+			t.Fatalf("pair (%v, %v) should be found", key, val)
 		}
 
 		x, node := kv.Get(el.Key)
@@ -318,7 +323,7 @@ func FuzzMapStringPutGet(f *testing.F) {
 
 		el := kv.Successor(key)
 		if el == nil {
-			t.Errorf("pair (%v, %v) should be found", key, val)
+			t.Fatalf("pair (%v, %v) should be found", key, val)
 		}
 
 		x, node := kv.Get(el.Key)

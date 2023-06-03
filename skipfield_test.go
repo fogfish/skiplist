@@ -64,6 +64,7 @@ func TestField(t *testing.T) {
 
 	it.Then(t).Should(
 		it.String(gf2.String()).Contain("SkipGF2"),
+		it.Equal(gf2.Length(), 9),
 	)
 }
 

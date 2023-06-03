@@ -293,7 +293,7 @@ func FuzzHashMapIntPutGet(f *testing.F) {
 
 		el := kv.Successor(key)
 		if el == nil {
-			t.Errorf("pair (%v, %v) should be found", key, val)
+			t.Fatalf("pair (%v, %v) should be found", key, val)
 		}
 
 		x, has := kv.Get(el.Key)
@@ -317,7 +317,7 @@ func FuzzHashMapStringPutGet(f *testing.F) {
 
 		el := kv.Successor(key)
 		if el == nil {
-			t.Errorf("pair (%v, %v) should be found", key, val)
+			t.Fatalf("pair (%v, %v) should be found", key, val)
 		}
 
 		x, has := kv.Get(el.Key)
