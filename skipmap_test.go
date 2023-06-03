@@ -31,12 +31,14 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 	kv := skiplist.NewMap[K, K]()
 
 	t.Run("Put", func(t *testing.T) {
+		f := func(has bool, node *skiplist.Pair[K, K]) bool { return has }
+
 		for _, el := range seq {
 			it.Then(t).Should(
-				it.True(kv.Put(el, el)),
+				it.True(f(kv.Put(el, el))),
 			).ShouldNot(
-				it.True(kv.Put(el, *new(K))),
-				it.True(kv.Put(el, el)),
+				it.True(f(kv.Put(el, *new(K)))),
+				it.True(f(kv.Put(el, el))),
 			)
 		}
 
@@ -48,9 +50,9 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 
 	t.Run("Get", func(t *testing.T) {
 		for _, el := range seq {
-			val, has := kv.Get(el)
+			val, node := kv.Get(el)
 			it.Then(t).Should(
-				it.True(has),
+				it.True(node != nil),
 				it.Equal(val, el),
 			)
 		}
@@ -59,12 +61,12 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 	t.Run("Keys", func(t *testing.T) {
 		values := kv.Values()
 		for i := 0; i < len(sorted); i++ {
-			val, has := kv.Get(values.Key())
+			val, node := kv.Get(values.Key)
 			it.Then(t).Should(
-				it.True(has),
+				it.True(node != nil),
 				it.Equal(val, sorted[i]),
-				it.Equal(values.Key(), sorted[i]),
-				it.Equal(values.Value(), sorted[i]),
+				it.Equal(values.Key, sorted[i]),
+				it.Equal(values.Value, sorted[i]),
 			)
 			values = values.Next()
 		}
@@ -74,11 +76,11 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 		for _, k := range []int{0, len(sorted) / 4, len(sorted) / 2, len(sorted) - 1} {
 			values := kv.Successor(sorted[k])
 			for i := k; i < len(sorted); i++ {
-				val, has := kv.Get(values.Key())
+				val, node := kv.Get(values.Key)
 				it.Then(t).Should(
-					it.True(has),
+					it.True(node != nil),
 					it.Equal(val, sorted[i]),
-					it.Equal(values.Key(), sorted[i]),
+					it.Equal(values.Key, sorted[i]),
 				)
 				values = values.Next()
 			}
@@ -93,13 +95,13 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 
 	t.Run("Cut", func(t *testing.T) {
 		for _, el := range seq {
-			val, has := kv.Cut(el)
+			val, node := kv.Cut(el)
 			_, exist := kv.Cut(el)
 			it.Then(t).Should(
-				it.True(has),
-				it.Equal(val, el),
+				it.True(val),
+				it.Equal(el, node.Value),
 			).ShouldNot(
-				it.True(exist),
+				it.True(exist != nil),
 			)
 		}
 
@@ -116,28 +118,28 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 
 			hval := head.Values()
 			for i := 0; i < k; i++ {
-				val, has := head.Get(hval.Key())
-				_, exist := tail.Get(hval.Key())
+				val, node := head.Get(hval.Key)
+				_, exist := tail.Get(hval.Key)
 				it.Then(t).Should(
-					it.True(has),
+					it.True(node != nil),
 					it.Equal(val, sorted[i]),
-					it.Equal(hval.Key(), sorted[i]),
+					it.Equal(hval.Key, sorted[i]),
 				).ShouldNot(
-					it.True(exist),
+					it.True(exist != nil),
 				)
 				hval = hval.Next()
 			}
 
 			tval := tail.Values()
 			for i := k; i < len(sorted); i++ {
-				val, has := tail.Get(tval.Key())
-				_, exist := head.Get(tval.Key())
+				val, node := tail.Get(tval.Key)
+				_, exist := head.Get(tval.Key)
 				it.Then(t).Should(
-					it.True(has),
+					it.True(node != nil),
 					it.Equal(val, sorted[i]),
-					it.Equal(tval.Key(), sorted[i]),
+					it.Equal(tval.Key, sorted[i]),
 				).ShouldNot(
-					it.True(exist),
+					it.True(exist != nil),
 				)
 				tval = tval.Next()
 			}
@@ -237,7 +239,7 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		for n := 0; n < b.N; n++ {
 			e := defMap.Successor(defKey[n%size])
 			for i := 0; i < 16 && e != nil; i++ {
-				defMap.Get(e.Key())
+				defMap.Get(e.Key)
 				e = e.Next()
 			}
 		}
@@ -249,7 +251,7 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		for n := 0; n < b.N; n++ {
 			e := defMap.Successor(defKey[n%size])
 			for i := 0; i < 64 && e != nil; i++ {
-				defMap.Get(e.Key())
+				defMap.Get(e.Key)
 				e = e.Next()
 			}
 		}
@@ -261,7 +263,7 @@ func MapBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		for n := 0; n < b.N; n++ {
 			e := defMap.Successor(defKey[n%size])
 			for i := 0; i < 64 && e != nil; i++ {
-				defMap.Get(e.Key())
+				defMap.Get(e.Key)
 				e = e.Next()
 			}
 		}
@@ -295,8 +297,8 @@ func FuzzMapIntPutGet(f *testing.F) {
 			t.Errorf("pair (%v, %v) should be found", key, val)
 		}
 
-		x, has := kv.Get(el.Key())
-		if !has {
+		x, node := kv.Get(el.Key)
+		if node == nil {
 			t.Errorf("pair (%v, %v) should be found", key, val)
 		}
 
@@ -319,8 +321,8 @@ func FuzzMapStringPutGet(f *testing.F) {
 			t.Errorf("pair (%v, %v) should be found", key, val)
 		}
 
-		x, has := kv.Get(el.Key())
-		if !has {
+		x, node := kv.Get(el.Key)
+		if node == nil {
 			t.Errorf("pair (%v, %v) should be found", key, val)
 		}
 

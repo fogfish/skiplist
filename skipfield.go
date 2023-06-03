@@ -54,7 +54,7 @@ func (f *GF2[K]) String() string {
 	sb.WriteString(fmt.Sprintf("--- SkipGF2[%T] %p ---\n", *new(K), &f))
 
 	for node := f.keys.Values(); node != nil; node = node.Next() {
-		key := node.Key()
+		key := node.Key
 		arc := f.arcs[key]
 		sb.WriteString(arc.String())
 		sb.WriteString("\n")
@@ -72,7 +72,7 @@ func (f *GF2[K]) Add(key K) (Arc[K], Arc[K]) {
 		panic("non-continuos field")
 	}
 
-	hi := node.key
+	hi := node.Key
 	tail := f.arcs[hi]
 
 	if tail.Rank == 0 {
@@ -94,7 +94,7 @@ func (f *GF2[K]) Add(key K) (Arc[K], Arc[K]) {
 
 // Put element
 func (f *GF2[K]) Put(arc Arc[K]) bool {
-	added := f.keys.Add(arc.Hi)
+	added, _ := f.keys.Add(arc.Hi)
 
 	f.arcs[arc.Hi] = arc
 
@@ -108,7 +108,7 @@ func (f *GF2[K]) Get(key K) (Arc[K], bool) {
 		panic("non-continuos field")
 	}
 
-	return f.arcs[node.key], true
+	return f.arcs[node.Key], true
 }
 
 func (f *GF2[K]) Keys() *Element[K] {

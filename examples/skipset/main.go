@@ -30,8 +30,11 @@ func main() {
 	fmt.Println(skipset)
 
 	// Get values
-	fmt.Printf("==> value (skipset) exists: %v\n", skipset.Has("skipset"))
-	fmt.Printf("==> value (rockset) exists: %v\n", skipset.Has("rockset"))
+	has, node := skipset.Has("skipset")
+	fmt.Printf("==> value (skipset) exists: %v %v\n", has, node)
+
+	has, node = skipset.Has("rockset")
+	fmt.Printf("==> value (rockset) exists: %v %v\n", has, node)
 
 	// Remove values
 	fmt.Println("\n==> remove (new) value")
@@ -41,14 +44,14 @@ func main() {
 	// values
 	fmt.Println("\n==> values")
 	for e := skipset.Values(); e != nil; e = e.Next() {
-		fmt.Printf(" %s", e.Key())
+		fmt.Printf(" %s", e.Key)
 	}
 	fmt.Println()
 
 	// successors
 	fmt.Println("\n==> successors (of)")
 	for e := skipset.Successor("of"); e != nil; e = e.Next() {
-		fmt.Printf(" %s", e.Key())
+		fmt.Printf(" %s", e.Key)
 	}
 	fmt.Println()
 

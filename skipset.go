@@ -23,46 +23,43 @@ import (
 // are generated with a simple pattern: 50% are level 1, 25% are level 2, 12.5% are
 // level 3 and so on.
 type Element[K Key] struct {
-	key     K
-	fingers []*Element[K]
+	Key     K
+	Fingers []*Element[K]
 }
 
-// Value of element
-func (el *Element[K]) Key() K { return el.key }
+// Rank of node
+func (el *Element[K]) Rank() int { return len(el.Fingers) }
 
 // Return next element in the set.
 // Use for-loop to iterate through set elements
 //
 //	for e := set.Successor(...); e != nil; e.Next() { /* ... */}
-func (el *Element[K]) Next() *Element[K] { return el.fingers[0] }
-
-// Rank of node
-func (el *Element[K]) Rank() int { return len(el.fingers) }
+func (el *Element[K]) Next() *Element[K] { return el.Fingers[0] }
 
 // Return next element in the set on level.
 // Use for-loop to iterate through set elements
 //
 //	for e := set.ValuesOn(...); e != nil; e.NextOn(...) { /* ... */}
 func (el *Element[K]) NextOn(level int) *Element[K] {
-	if level >= len(el.fingers) {
+	if level >= len(el.Fingers) {
 		return nil
 	}
 
-	return el.fingers[level]
+	return el.Fingers[level]
 }
 
 // Cast Element into string
 func (el *Element[K]) String() string {
 	fingers := ""
-	for _, x := range el.fingers {
+	for _, x := range el.Fingers {
 		if x != nil {
-			fingers = fingers + fmt.Sprintf(" %v", x.key)
+			fingers = fingers + fmt.Sprintf(" %v", x.Key)
 		} else {
 			fingers = fingers + " _"
 		}
 	}
 
-	return fmt.Sprintf("{ %4v\t|%s }", el.key, fingers)
+	return fmt.Sprintf("{ %4v\t|%s }", el.Key, fingers)
 }
 
 // --------------------------------------------------------------------------------------
@@ -98,8 +95,7 @@ type Set[K Key] struct {
 
 // New create instance of SkipList
 func NewSet[K Key](opts ...SetConfig[K]) *Set[K] {
-	head := new(Element[K])
-	head.fingers = make([]*Element[K], L)
+	head := &Element[K]{Fingers: make([]*Element[K], L)}
 
 	set := &Set[K]{
 		head:   head,
@@ -127,7 +123,7 @@ func (set *Set[K]) String() string {
 	for v != nil {
 		sb.WriteString(v.String())
 		sb.WriteString("\n")
-		v = v.fingers[0]
+		v = v.Fingers[0]
 	}
 
 	return sb.String()
@@ -140,7 +136,7 @@ func (set *Set[K]) Length() int {
 // Max level of skip list
 func (set *Set[K]) Level() int {
 	for i := 0; i < L; i++ {
-		if set.head.fingers[i] == nil {
+		if set.head.Fingers[i] == nil {
 			return i - 1
 		}
 	}
@@ -151,44 +147,44 @@ func (set *Set[K]) Level() int {
 // skip maintain the vector path that contains a pointer to the rightmost node
 // of level i or higher that is to the left of the location of the
 // insertion/deletion.
-func (set *Set[K]) skip(lvl int, key K) (*Element[K], [L]*Element[K]) {
+func (set *Set[K]) Skip(level int, key K) (*Element[K], [L]*Element[K]) {
 	path := set.path
 
 	node := set.head
-	next := node.fingers
-	for level := L - 1; level >= lvl; level-- {
-		for next[level] != nil && next[level].key < key {
-			node = node.fingers[level]
-			next = node.fingers
+	next := node.Fingers
+	for lev := L - 1; lev >= level; lev-- {
+		for next[lev] != nil && next[lev].Key < key {
+			node = node.Fingers[lev]
+			next = node.Fingers
 		}
-		path[level] = node
+		path[lev] = node
 	}
 
-	return next[lvl], path
+	return next[level], path
 }
 
 // Add element to set, return true if element is new
-func (set *Set[K]) Add(key K) bool {
-	el, path := set.skip(0, key)
+func (set *Set[K]) Add(key K) (bool, *Element[K]) {
+	el, path := set.Skip(0, key)
 
-	if el != nil && el.key == key {
-		return false
+	if el != nil && el.Key == key {
+		return false, el
 	}
 
-	rank, el := set.createElement(L, key)
+	rank, el := set.CreateElement(L, key)
 
 	// re-bind fingers to new node
 	for level := 0; level < rank; level++ {
-		el.fingers[level] = path[level].fingers[level]
-		path[level].fingers[level] = el
+		el.Fingers[level] = path[level].Fingers[level]
+		path[level].Fingers[level] = el
 	}
 
 	set.length++
-	return true
+	return true, el
 }
 
 // mkNode creates a new node, randomly defines empty fingers (level of the node)
-func (set *Set[K]) createElement(maxL int, key K) (int, *Element[K]) {
+func (set *Set[K]) CreateElement(maxL int, key K) (int, *Element[K]) {
 	// See: https://golang.org/src/math/rand/rand.go#L150
 	p := float64(set.random.Int63()) / (1 << 63)
 
@@ -197,43 +193,47 @@ func (set *Set[K]) createElement(maxL int, key K) (int, *Element[K]) {
 		level++
 	}
 
-	var node *Element[K]
-	if set.malloc == nil {
-		node = &Element[K]{fingers: make([]*Element[K], level)}
-	} else {
-		node = set.malloc.Alloc(key)
-	}
-	node.key = key
+	node := set.NewElement(key, level)
+	node.Key = key
 
 	return level, node
 }
 
-// Check is element exists in set
-func (set *Set[K]) Has(key K) bool {
-	el, _ := set.skip(0, key)
-
-	if el != nil && el.key == key {
-		return true
+// allocate new node
+func (set *Set[K]) NewElement(key K, rank int) *Element[K] {
+	if set.malloc != nil {
+		return set.malloc.Alloc(key)
 	}
 
-	return false
+	return &Element[K]{Fingers: make([]*Element[K], rank)}
+}
+
+// Check is element exists in set
+func (set *Set[K]) Has(key K) (bool, *Element[K]) {
+	el, _ := set.Skip(0, key)
+
+	if el != nil && el.Key == key {
+		return true, el
+	}
+
+	return false, nil
 }
 
 // Cut element from the set, returns true if element is removed
-func (set *Set[K]) Cut(key K) bool {
+func (set *Set[K]) Cut(key K) (bool, *Element[K]) {
 	rank := L
-	v, path := set.skip(0, key)
+	v, path := set.Skip(0, key)
 
-	if v == nil || v.key != key {
-		return false
+	if v == nil || v.Key != key {
+		return false, nil
 	}
 
 	for level := 0; level < rank; level++ {
-		if path[level].fingers[level] == v {
-			if len(v.fingers) > level {
-				path[level].fingers[level] = v.fingers[level]
+		if path[level].Fingers[level] == v {
+			if len(v.Fingers) > level {
+				path[level].Fingers[level] = v.Fingers[level]
 			} else {
-				path[level].fingers[level] = nil
+				path[level].Fingers[level] = nil
 			}
 		}
 	}
@@ -244,49 +244,34 @@ func (set *Set[K]) Cut(key K) bool {
 		set.malloc.Free(key)
 	}
 
-	return true
+	return true, v
+}
+
+// Head of skiplist
+func (set *Set[K]) Head() *Element[K] {
+	return set.head
 }
 
 // All set elements
 func (set *Set[K]) Values() *Element[K] {
-	return set.head.fingers[0]
+	return set.head.Fingers[0]
 }
 
 // Successor elements of key
 func (set *Set[K]) Successor(key K) *Element[K] {
-	el, _ := set.skip(0, key)
+	el, _ := set.Skip(0, key)
 	return el
-}
-
-// Predecessor elements of key
-func (set *Set[K]) Predecessor(key K) *Element[K] {
-	_, path := set.skip(0, key)
-	if path[0] == set.head {
-		return nil
-	}
-
-	return path[0]
-}
-
-func (set *Set[K]) Neighbours(key K) (*Element[K], *Element[K]) {
-	el, path := set.skip(0, key)
-	if path[0] == set.head {
-		return nil, el
-	}
-
-	return path[0], el
 }
 
 // Split set of elements by key
 func (set *Set[K]) Split(key K) *Set[K] {
-	node, path := set.skip(0, key)
+	node, path := set.Skip(0, key)
 
 	for level, x := range path {
-		x.fingers[level] = nil
+		x.Fingers[level] = nil
 	}
 
-	head := new(Element[K])
-	head.fingers = make([]*Element[K], L)
+	head := &Element[K]{Fingers: make([]*Element[K], L)}
 
 	tail := &Set[K]{
 		head:   head,
@@ -297,10 +282,10 @@ func (set *Set[K]) Split(key K) *Set[K] {
 		ptable: set.ptable,
 		malloc: set.malloc,
 	}
-	tail.head.fingers[0] = node
+	tail.head.Fingers[0] = node
 
 	length := 0
-	for n := node; n != nil; n = n.fingers[0] {
+	for n := node; n != nil; n = n.Fingers[0] {
 		length++
 	}
 
@@ -308,170 +293,6 @@ func (set *Set[K]) Split(key K) *Set[K] {
 	set.length -= length
 
 	return tail
-}
-
-// --------------------------------------------------------------------------------------
-
-// SetL[K] type projects Set[K] with all ops on level N
-type SetL[K Key] Set[K]
-
-func ToSetL[K Key](s *Set[K]) *SetL[K] { return (*SetL[K])(s) }
-
-func (s *SetL[K]) PushH(seq []K) *Element[K] {
-	set := (*Set[K])(s)
-
-	for i := 1; i < len(seq); i++ {
-		if set.null != seq[i] {
-			el, _ := set.skip(0, seq[i])
-			set.head.fingers[i-1] = el
-		}
-	}
-
-	return set.head
-}
-
-// Explicitly create node with given topology
-func (s *SetL[K]) Push(seq []K) *Element[K] {
-	set := (*Set[K])(s)
-
-	var node *Element[K]
-	if set.malloc == nil {
-		node = &Element[K]{fingers: make([]*Element[K], len(seq)-1)}
-	} else {
-		node = set.malloc.Alloc(seq[0])
-	}
-	node.key = seq[0]
-
-	for i := 1; i < len(seq); i++ {
-		if set.null != seq[i] {
-			el, _ := set.skip(0, seq[i])
-			node.fingers[i-1] = el
-		}
-	}
-
-	for i := 1; i < len(seq); i++ {
-		set.head.fingers[i-1] = node
-	}
-
-	return node
-}
-
-func (s *SetL[K]) Head() *Element[K] {
-	return s.head
-}
-
-// Add element to set, return true if element is new
-// The element would not be promoted higher than defined level
-func (s *SetL[K]) Add(level int, key K) bool {
-	set := (*Set[K])(s)
-	el, path := set.skip(0, key)
-
-	if el != nil && el.key == key {
-		return false
-	}
-
-	rank, el := set.createElement(level, key)
-
-	// re-bind fingers to new node
-	for level := 0; level < rank; level++ {
-		el.fingers[level] = path[level].fingers[level]
-		path[level].fingers[level] = el
-	}
-
-	set.length++
-	return true
-}
-
-// TODO: predecessor
-
-// Cut segment on the level
-func (s *SetL[K]) Cut(level int, node *Element[K]) *Element[K] {
-	if node == nil {
-		return nil
-	}
-
-	set := (*Set[K])(s)
-
-	from := node
-	if from == s.head.fingers[0] {
-		// list.head is not available to client.
-		// the cut of first segments should be started from head
-		from = s.head
-	}
-
-	to := from.NextOn(level)
-	segment := from.Next()
-
-	// sometimes segment is equal to 0
-	if segment == to {
-		return nil
-	}
-
-	var lastOnSegment *Element[K]
-
-	if to != nil {
-		_, pathToHi := set.skip(0, to.key)
-		lastOnSegment = pathToHi[0]
-	}
-
-	for i := 0; i < len(from.fingers); i++ {
-		if from.fingers[i] != nil && (to == nil || from.fingers[i].key < to.key) {
-			from.fingers[i] = to
-		}
-	}
-
-	if to != nil {
-		// detach last segment from list
-		for i := 0; i < len(lastOnSegment.fingers); i++ {
-			lastOnSegment.fingers[i] = nil
-		}
-	}
-
-	length := 0
-	for n := segment; n != nil; n = n.fingers[0] {
-		length++
-	}
-	set.length -= length
-
-	return segment
-}
-
-// All set elements on defined level
-func (s *SetL[K]) Values(level int) *Element[K] {
-	if level >= L {
-		return nil
-	}
-
-	set := (*Set[K])(s)
-	return set.head.fingers[level]
-}
-
-// Successor elements from set on given level
-func (s *SetL[K]) Successor(level int, key K) *Element[K] {
-	set := (*Set[K])(s)
-	el, _ := set.skip(level, key)
-	return el
-}
-
-// Predecessor elements of key
-func (s *SetL[K]) Predecessor(level int, key K) *Element[K] {
-	set := (*Set[K])(s)
-	_, path := set.skip(level, key)
-	if path[level] == set.head {
-		return nil
-	}
-
-	return path[level]
-}
-
-func (s *SetL[K]) Neighbours(level int, key K) (*Element[K], *Element[K]) {
-	set := (*Set[K])(s)
-	el, path := set.skip(level, key)
-	if path[level] == set.head {
-		return nil, el
-	}
-
-	return path[level], el
 }
 
 // --------------------------------------------------------------------------------------

@@ -207,12 +207,6 @@ func TestForSet(t *testing.T) {
 		},
 	)
 
-	ForSuite(t, seq,
-		func(key uint32) tseq.Seq[uint32] {
-			return skiplist.ForSetOn(0, set, set.Successor(key))
-		},
-	)
-
 	t.Run("Nil", func(t *testing.T) {
 		it.Then(t).Should(
 			it.Nil(skiplist.ForSet(set, nil)),
@@ -256,12 +250,6 @@ func TestForMap(t *testing.T) {
 	ForSuite(t, seq,
 		func(key uint32) tseq.Seq[uint32] {
 			return skiplist.ForMap[uint32, uint32](kv, kv.Successor(key))
-		},
-	)
-
-	ForSuite(t, seq,
-		func(key uint32) tseq.Seq[uint32] {
-			return skiplist.ForMapOn[uint32, uint32](0, kv, kv.Successor(key))
 		},
 	)
 

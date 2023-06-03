@@ -36,11 +36,13 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 	)
 
 	t.Run("Add", func(t *testing.T) {
+		f := func(has bool, node *skiplist.Element[K]) bool { return has }
+
 		for _, el := range seq {
 			it.Then(t).Should(
-				it.True(set.Add(el)),
+				it.True(f(set.Add(el))),
 			).ShouldNot(
-				it.True(set.Add(el)),
+				it.True(f(set.Add(el))),
 			)
 		}
 
@@ -51,9 +53,11 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 	})
 
 	t.Run("Has", func(t *testing.T) {
+		f := func(has bool, node *skiplist.Element[K]) bool { return has }
+
 		for _, el := range seq {
 			it.Then(t).Should(
-				it.True(set.Has(el)),
+				it.True(f(set.Has(el))),
 			)
 		}
 	})
@@ -62,7 +66,7 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 		values := set.Values()
 		for i := 0; i < len(sorted); i++ {
 			it.Then(t).Should(
-				it.Equal(values.Key(), sorted[i]),
+				it.Equal(values.Key, sorted[i]),
 			)
 			values = values.Next()
 		}
@@ -73,7 +77,7 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 			values := set.Successor(sorted[k])
 			for i := k; i < len(sorted); i++ {
 				it.Then(t).Should(
-					it.Equal(values.Key(), sorted[i]),
+					it.Equal(values.Key, sorted[i]),
 				)
 				values = values.Next()
 			}
@@ -87,11 +91,13 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 	})
 
 	t.Run("Cut", func(t *testing.T) {
+		f := func(has bool, node *skiplist.Element[K]) bool { return has }
+
 		for _, el := range seq {
 			it.Then(t).Should(
-				it.True(set.Cut(el)),
+				it.True(f(set.Cut(el))),
 			).ShouldNot(
-				it.True(set.Cut(el)),
+				it.True(f(set.Cut(el))),
 			)
 		}
 
@@ -109,7 +115,7 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 			hval := head.Values()
 			for i := 0; i < k; i++ {
 				it.Then(t).Should(
-					it.Equal(hval.Key(), sorted[i]),
+					it.Equal(hval.Key, sorted[i]),
 				)
 				hval = hval.Next()
 			}
@@ -117,7 +123,7 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 			tval := tail.Values()
 			for i := k; i < len(sorted); i++ {
 				it.Then(t).Should(
-					it.Equal(tval.Key(), sorted[i]),
+					it.Equal(tval.Key, sorted[i]),
 				)
 				tval = tval.Next()
 			}
@@ -263,7 +269,7 @@ func FuzzSetAddHas(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, el string) {
 		set.Add(el)
-		if !set.Has(el) {
+		if has, _ := set.Has(el); !has {
 			t.Errorf("element %s should be found", el)
 		}
 	})

@@ -30,42 +30,13 @@ type forSet[K Key] struct {
 	el *Element[K]
 }
 
-func (it *forSet[K]) Value() K { return it.el.key }
+func (it *forSet[K]) Value() K { return it.el.Key }
 func (it *forSet[K]) Next() bool {
 	if it.el == nil {
 		return false
 	}
 
 	it.el = it.el.Next()
-
-	return it.el != nil
-}
-
-// Build generic iterate over Set elements on level N
-//
-//	seq := skiplist.ForSetOn(set, set.Values(...))
-//	for has := seq != nil; has; has = seq.Next() {
-//		seq.Key()
-//	}
-func ForSetOn[K Key](lvl int, set *Set[K], el *Element[K]) seq.Seq[K] {
-	if el == nil {
-		return nil
-	}
-	return &forSetOn[K]{lvl, el}
-}
-
-type forSetOn[K Key] struct {
-	lvl int
-	el  *Element[K]
-}
-
-func (it *forSetOn[K]) Value() K { return it.el.key }
-func (it *forSetOn[K]) Next() bool {
-	if it.el == nil {
-		return false
-	}
-
-	it.el = it.el.NextOn(it.lvl)
 
 	return it.el != nil
 }
@@ -88,8 +59,8 @@ type forMap[K Key, V any] struct {
 	el *Pair[K, V]
 }
 
-func (it *forMap[K, V]) Key() K   { return it.el.key }
-func (it *forMap[K, V]) Value() V { return it.el.value }
+func (it *forMap[K, V]) Key() K   { return it.el.Key }
+func (it *forMap[K, V]) Value() V { return it.el.Value }
 func (it *forMap[K, V]) Next() bool {
 	if it.el == nil {
 		return false
@@ -105,7 +76,7 @@ func ForHashMap[K Key, V any](kv *HashMap[K, V], key *Element[K]) pair.Seq[K, V]
 		return nil
 	}
 
-	val, _ := kv.Get(key.key)
+	val, _ := kv.Get(key.Key)
 	return &forHashMap[K, V]{key: key, val: val, kv: kv}
 }
 
@@ -114,7 +85,7 @@ func ForGF2[K Num](gf2 *GF2[K], key *Element[K]) pair.Seq[K, Arc[K]] {
 		return nil
 	}
 
-	val, _ := gf2.Get(key.key)
+	val, _ := gf2.Get(key.Key)
 	return &forHashMap[K, Arc[K]]{key: key, val: val, kv: gf2}
 }
 
@@ -128,7 +99,7 @@ type forHashMap[K Key, V any] struct {
 	kv  getter[K, V]
 }
 
-func (it *forHashMap[K, V]) Key() K   { return it.key.key }
+func (it *forHashMap[K, V]) Key() K   { return it.key.Key }
 func (it *forHashMap[K, V]) Value() V { return it.val }
 func (it *forHashMap[K, V]) Next() bool {
 	if it.key == nil {
@@ -140,36 +111,7 @@ func (it *forHashMap[K, V]) Next() bool {
 		return false
 	}
 
-	it.val, _ = it.kv.Get(it.key.key)
+	it.val, _ = it.kv.Get(it.key.Key)
 
 	return true
-}
-
-// Build generic iterate over Map elements on level N
-//
-//	seq := skiplist.ForMapOn(kv,  set.ValuesOn(...))
-//	for has := seq != nil; has; has = seq.Next() {
-//		seq.Key()
-//	}
-func ForMapOn[K Key, V any](lvl int, kv *Map[K, V], el *Pair[K, V]) pair.Seq[K, V] {
-	if el == nil {
-		return nil
-	}
-	return &forMapOn[K, V]{lvl, el}
-}
-
-type forMapOn[K Key, V any] struct {
-	lvl int
-	el  *Pair[K, V]
-}
-
-func (it *forMapOn[K, V]) Key() K   { return it.el.key }
-func (it *forMapOn[K, V]) Value() V { return it.el.value }
-func (it *forMapOn[K, V]) Next() bool {
-	if it.el == nil {
-		return false
-	}
-
-	it.el = it.el.NextOn(it.lvl)
-	return it.el != nil
 }
