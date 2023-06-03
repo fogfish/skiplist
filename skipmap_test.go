@@ -83,6 +83,20 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 		}
 	})
 
+	t.Run("Values.NextOn", func(t *testing.T) {
+		values := kv.Values()
+		for i := 0; i < len(sorted); i++ {
+			val, node := kv.Get(values.Key)
+			it.Then(t).Should(
+				it.True(node != nil),
+				it.Equal(val, sorted[i]),
+				it.Equal(values.Key, sorted[i]),
+				it.Equal(values.Value, sorted[i]),
+			)
+			values = values.NextOn(0)
+		}
+	})
+
 	t.Run("Successor", func(t *testing.T) {
 		for _, k := range []int{0, len(sorted) / 4, len(sorted) / 2, len(sorted) - 1} {
 			values := kv.Successor(sorted[k])

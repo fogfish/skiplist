@@ -78,6 +78,16 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 		}
 	})
 
+	t.Run("Values.NextOn", func(t *testing.T) {
+		values := set.Values()
+		for i := 0; i < len(sorted); i++ {
+			it.Then(t).Should(
+				it.Equal(values.Key, sorted[i]),
+			)
+			values = values.NextOn(0)
+		}
+	})
+
 	t.Run("Successor", func(t *testing.T) {
 		for _, k := range []int{0, len(sorted) / 4, len(sorted) / 2, len(sorted) - 1} {
 			values := set.Successor(sorted[k])
