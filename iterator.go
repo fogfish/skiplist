@@ -30,7 +30,7 @@ type forSet[K Key] struct {
 	el *Element[K]
 }
 
-func (it *forSet[K]) Value() K { return it.el.key }
+func (it *forSet[K]) Value() K { return it.el.Key }
 func (it *forSet[K]) Next() bool {
 	if it.el == nil {
 		return false
@@ -41,23 +41,43 @@ func (it *forSet[K]) Next() bool {
 	return it.el != nil
 }
 
-type Getter[K Key, V any] interface {
-	Get(K) (V, bool)
-}
-
 // Iterate over Map elements
 //
 //	seq := skiplist.ForMap(kv, kv.Successor(key))
 //	for has := seq != nil; has; has = seq.Next() {
 //		seq.Key()
 //	}
-func ForMap[K Key, V any](kv *Map[K, V], key *Element[K]) pair.Seq[K, V] {
+func ForMap[K Key, V any](kv *Map[K, V], el *Pair[K, V]) pair.Seq[K, V] {
+	if el == nil {
+		return nil
+	}
+
+	return &forMap[K, V]{el: el}
+}
+
+type forMap[K Key, V any] struct {
+	el *Pair[K, V]
+}
+
+func (it *forMap[K, V]) Key() K   { return it.el.Key }
+func (it *forMap[K, V]) Value() V { return it.el.Value }
+func (it *forMap[K, V]) Next() bool {
+	if it.el == nil {
+		return false
+	}
+
+	it.el = it.el.Next()
+
+	return it.el != nil
+}
+
+func ForHashMap[K Key, V any](kv *HashMap[K, V], key *Element[K]) pair.Seq[K, V] {
 	if key == nil {
 		return nil
 	}
 
-	val, _ := kv.Get(key.key)
-	return &forMap[K, V]{key: key, val: val, kv: kv}
+	val, _ := kv.Get(key.Key)
+	return &forHashMap[K, V]{key: key, val: val, kv: kv}
 }
 
 func ForGF2[K Num](gf2 *GF2[K], key *Element[K]) pair.Seq[K, Arc[K]] {
@@ -65,19 +85,23 @@ func ForGF2[K Num](gf2 *GF2[K], key *Element[K]) pair.Seq[K, Arc[K]] {
 		return nil
 	}
 
-	val, _ := gf2.Get(key.key)
-	return &forMap[K, Arc[K]]{key: key, val: val, kv: gf2}
+	val, _ := gf2.Get(key.Key)
+	return &forHashMap[K, Arc[K]]{key: key, val: val, kv: gf2}
 }
 
-type forMap[K Key, V any] struct {
+type getter[K Key, V any] interface {
+	Get(K) (V, bool)
+}
+
+type forHashMap[K Key, V any] struct {
 	key *Element[K]
 	val V
-	kv  Getter[K, V]
+	kv  getter[K, V]
 }
 
-func (it *forMap[K, V]) Key() K   { return it.key.key }
-func (it *forMap[K, V]) Value() V { return it.val }
-func (it *forMap[K, V]) Next() bool {
+func (it *forHashMap[K, V]) Key() K   { return it.key.Key }
+func (it *forHashMap[K, V]) Value() V { return it.val }
+func (it *forHashMap[K, V]) Next() bool {
 	if it.key == nil {
 		return false
 	}
@@ -87,7 +111,7 @@ func (it *forMap[K, V]) Next() bool {
 		return false
 	}
 
-	it.val, _ = it.kv.Get(it.key.key)
+	it.val, _ = it.kv.Get(it.key.Key)
 
 	return true
 }

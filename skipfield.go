@@ -19,9 +19,8 @@ type Num interface {
 }
 
 type GF2[K Num] struct {
-	keys   *Set[K]
-	arcs   map[K]Arc[K]
-	Length int
+	keys *Set[K]
+	arcs map[K]Arc[K]
 }
 
 type Arc[K Num] struct {
@@ -33,7 +32,7 @@ func (arc Arc[K]) String() string {
 	return fmt.Sprintf("{ %2d : %8x - %8x | %10d - %10d }", arc.Rank, arc.Lo, arc.Hi, arc.Lo, arc.Hi)
 }
 
-func NewGF2[K Num](opts ...ConfigSet[K]) *GF2[K] {
+func NewGF2[K Num](opts ...SetConfig[K]) *GF2[K] {
 	keys := NewSet(opts...)
 
 	top := *new(K) - 1
@@ -45,9 +44,8 @@ func NewGF2[K Num](opts ...ConfigSet[K]) *GF2[K] {
 	}
 
 	return &GF2[K]{
-		keys:   keys,
-		arcs:   arcs,
-		Length: 1,
+		keys: keys,
+		arcs: arcs,
 	}
 }
 
@@ -56,7 +54,7 @@ func (f *GF2[K]) String() string {
 	sb.WriteString(fmt.Sprintf("--- SkipGF2[%T] %p ---\n", *new(K), &f))
 
 	for node := f.keys.Values(); node != nil; node = node.Next() {
-		key := node.Key()
+		key := node.Key
 		arc := f.arcs[key]
 		sb.WriteString(arc.String())
 		sb.WriteString("\n")
@@ -65,14 +63,16 @@ func (f *GF2[K]) String() string {
 	return sb.String()
 }
 
+func (f *GF2[K]) Length() int { return f.keys.length }
+
 // Add new element to the field
 func (f *GF2[K]) Add(key K) (Arc[K], Arc[K]) {
-	node := f.keys.Successors(key)
+	node := f.keys.Successor(key)
 	if node == nil {
 		panic("non-continuos field")
 	}
 
-	hi := node.key
+	hi := node.Key
 	tail := f.arcs[hi]
 
 	if tail.Rank == 0 {
@@ -89,35 +89,32 @@ func (f *GF2[K]) Add(key K) (Arc[K], Arc[K]) {
 	f.arcs[mid] = head
 	f.arcs[hi] = tail
 
-	f.Length = f.keys.Length
-
 	return head, tail
 }
 
 // Put element
 func (f *GF2[K]) Put(arc Arc[K]) bool {
-	added := f.keys.Add(arc.Hi)
+	added, _ := f.keys.Add(arc.Hi)
 
 	f.arcs[arc.Hi] = arc
-	f.Length = f.keys.Length
 
 	return added
 }
 
 // Check elements position on the field
 func (f *GF2[K]) Get(key K) (Arc[K], bool) {
-	node := f.keys.Successors(key)
+	node := f.keys.Successor(key)
 	if node == nil {
 		panic("non-continuos field")
 	}
 
-	return f.arcs[node.key], true
+	return f.arcs[node.Key], true
 }
 
 func (f *GF2[K]) Keys() *Element[K] {
 	return f.keys.Values()
 }
 
-func (f *GF2[K]) Successors(key K) *Element[K] {
-	return f.keys.Successors(key)
+func (f *GF2[K]) Successor(key K) *Element[K] {
+	return f.keys.Successor(key)
 }

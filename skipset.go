@@ -10,6 +10,7 @@ package skiplist
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 	"time"
@@ -22,47 +23,46 @@ import (
 // are generated with a simple pattern: 50% are level 1, 25% are level 2, 12.5% are
 // level 3 and so on.
 type Element[K Key] struct {
-	key     K
-	fingers [L]*Element[K]
+	Key     K
+	Fingers []*Element[K]
 }
 
-// Value of element
-func (el *Element[K]) Key() K { return el.key }
+// Rank of node
+func (el *Element[K]) Rank() int { return len(el.Fingers) }
 
 // Return next element in the set.
 // Use for-loop to iterate through set elements
 //
 //	for e := set.Successor(...); e != nil; e.Next() { /* ... */}
-func (el *Element[K]) Next() *Element[K] { return el.fingers[0] }
+func (el *Element[K]) Next() *Element[K] { return el.Fingers[0] }
+
+// Return next element in the set on level.
+// Use for-loop to iterate through set elements
+//
+//	for e := set.ValuesOn(...); e != nil; e.NextOn(...) { /* ... */}
+func (el *Element[K]) NextOn(level int) *Element[K] {
+	if level >= len(el.Fingers) {
+		return nil
+	}
+
+	return el.Fingers[level]
+}
 
 // Cast Element into string
 func (el *Element[K]) String() string {
 	fingers := ""
-	for _, x := range el.fingers {
+	for _, x := range el.Fingers {
 		if x != nil {
-			fingers = fingers + fmt.Sprintf(" %v", x.key)
+			fingers = fingers + fmt.Sprintf(" %v", x.Key)
+		} else {
+			fingers = fingers + " _"
 		}
 	}
 
-	return fmt.Sprintf("{ %4v\t|%s }", el.key, fingers)
+	return fmt.Sprintf("{ %4v\t|%s }", el.Key, fingers)
 }
 
-// Configure Set properties
-type ConfigSet[K Key] func(*Set[K])
-
-// Configure Random Generator
-func ConfigSetRandomSource[K Key](random rand.Source) ConfigSet[K] {
-	return func(set *Set[K]) {
-		set.random = random
-	}
-}
-
-// Configure Memory Allocator
-func ConfigSetAllocator[K Key](malloc Allocator[K, Element[K]]) ConfigSet[K] {
-	return func(set *Set[K]) {
-		set.malloc = malloc
-	}
-}
+// --------------------------------------------------------------------------------------
 
 // Set of Elements
 type Set[K Key] struct {
@@ -75,7 +75,7 @@ type Set[K Key] struct {
 
 	//
 	// number of elements in the set, O(1)
-	Length int
+	length int
 
 	//
 	// random generator
@@ -86,19 +86,25 @@ type Set[K Key] struct {
 	// the buffer implements optimization of memory allocations
 	path [L]*Element[K]
 
+	//
+	ptable [L]float64
+
 	// memory allocator for elements
 	malloc Allocator[K, Element[K]]
 }
 
 // New create instance of SkipList
-func NewSet[K Key](opts ...ConfigSet[K]) *Set[K] {
+func NewSet[K Key](opts ...SetConfig[K]) *Set[K] {
+	head := &Element[K]{Fingers: make([]*Element[K], L)}
+
 	set := &Set[K]{
-		head:   new(Element[K]),
+		head:   head,
 		null:   *new(K),
-		Length: 0,
-		random: rand.New(rand.NewSource(time.Now().UnixNano())),
+		length: 0,
+		random: rand.NewSource(time.Now().UnixNano()),
 		path:   [L]*Element[K]{},
-		malloc: malloc[K, Element[K]]{},
+		ptable: probabilityTable,
+		malloc: nil,
 	}
 
 	for _, opt := range opts {
@@ -117,148 +123,216 @@ func (set *Set[K]) String() string {
 	for v != nil {
 		sb.WriteString(v.String())
 		sb.WriteString("\n")
-		v = v.fingers[0]
+		v = v.Fingers[0]
 	}
 
 	return sb.String()
+}
+
+func (set *Set[K]) Length() int {
+	return set.length
+}
+
+// Max level of skip list
+func (set *Set[K]) Level() int {
+	for i := 0; i < L; i++ {
+		if set.head.Fingers[i] == nil {
+			return i - 1
+		}
+	}
+	return L - 1
 }
 
 // skip algorithm is similar to search algorithm that traversing forward pointers.
 // skip maintain the vector path that contains a pointer to the rightmost node
 // of level i or higher that is to the left of the location of the
 // insertion/deletion.
-func (set *Set[K]) skip(key K) (*Element[K], [L]*Element[K]) {
+func (set *Set[K]) Skip(level int, key K) (*Element[K], [L]*Element[K]) {
 	path := set.path
 
 	node := set.head
-	next := &node.fingers
-	for level := L - 1; level >= 0; level-- {
-		for next[level] != nil && next[level].key < key {
-			node = node.fingers[level]
-			next = &node.fingers
+	next := node.Fingers
+	for lev := L - 1; lev >= level; lev-- {
+		for next[lev] != nil && next[lev].Key < key {
+			node = node.Fingers[lev]
+			next = node.Fingers
 		}
-		path[level] = node
+		path[lev] = node
 	}
 
-	return next[0], path
+	return next[level], path
 }
 
 // Add element to set, return true if element is new
-func (set *Set[K]) Add(key K) bool {
-	el, path := set.skip(key)
+func (set *Set[K]) Add(key K) (bool, *Element[K]) {
+	el, path := set.Skip(0, key)
 
-	if el != nil && el.key == key {
-		return false
+	if el != nil && el.Key == key {
+		return false, el
 	}
 
-	rank, el := set.createElement(key)
+	rank, el := set.CreateElement(L, key)
 
 	// re-bind fingers to new node
 	for level := 0; level < rank; level++ {
-		el.fingers[level] = path[level].fingers[level]
-		path[level].fingers[level] = el
+		el.Fingers[level] = path[level].Fingers[level]
+		path[level].Fingers[level] = el
 	}
 
-	set.Length++
-	return true
+	set.length++
+	return true, el
 }
 
 // mkNode creates a new node, randomly defines empty fingers (level of the node)
-func (set *Set[K]) createElement(key K) (int, *Element[K]) {
+func (set *Set[K]) CreateElement(maxL int, key K) (int, *Element[K]) {
 	// See: https://golang.org/src/math/rand/rand.go#L150
 	p := float64(set.random.Int63()) / (1 << 63)
 
 	level := 0
-	for level < L && p < probabilityTable[level] {
+	for level < maxL && p < set.ptable[level] {
 		level++
 	}
 
-	var node *Element[K]
-	if set.malloc == nil {
-		node = new(Element[K])
-	} else {
-		node = set.malloc.Alloc(key)
-	}
-	node.key = key
+	node := set.NewElement(key, level)
+	node.Key = key
 
 	return level, node
 }
 
-// Check is element exists in set
-func (set *Set[K]) Has(key K) bool {
-	el, _ := set.skip(key)
-
-	if el != nil && el.key == key {
-		return true
+// allocate new node
+func (set *Set[K]) NewElement(key K, rank int) *Element[K] {
+	if set.malloc != nil {
+		return set.malloc.Alloc(key)
 	}
 
-	return false
+	return &Element[K]{Fingers: make([]*Element[K], rank)}
+}
+
+// Check is element exists in set
+func (set *Set[K]) Has(key K) (bool, *Element[K]) {
+	el, _ := set.Skip(0, key)
+
+	if el != nil && el.Key == key {
+		return true, el
+	}
+
+	return false, nil
 }
 
 // Cut element from the set, returns true if element is removed
-func (set *Set[K]) Cut(key K) bool {
+func (set *Set[K]) Cut(key K) (bool, *Element[K]) {
 	rank := L
-	v, path := set.skip(key)
+	v, path := set.Skip(0, key)
 
-	if v == nil || v.key != key {
-		return false
+	if v == nil || v.Key != key {
+		return false, nil
 	}
 
 	for level := 0; level < rank; level++ {
-		if path[level].fingers[level] == v {
-			if len(v.fingers) > level {
-				path[level].fingers[level] = v.fingers[level]
+		if path[level].Fingers[level] == v {
+			if len(v.Fingers) > level {
+				path[level].Fingers[level] = v.Fingers[level]
 			} else {
-				path[level].fingers[level] = nil
+				path[level].Fingers[level] = nil
 			}
 		}
 	}
 
-	set.Length--
+	set.length--
 
 	if set.malloc != nil {
 		set.malloc.Free(key)
 	}
 
-	return true
+	return true, v
+}
+
+// Head of skiplist
+func (set *Set[K]) Head() *Element[K] {
+	return set.head
 }
 
 // All set elements
 func (set *Set[K]) Values() *Element[K] {
-	return set.head.fingers[0]
+	return set.head.Fingers[0]
 }
 
-// Successor elements from set
-func (set *Set[K]) Successors(key K) *Element[K] {
-	el, _ := set.skip(key)
+// Successor elements of key
+func (set *Set[K]) Successor(key K) *Element[K] {
+	el, _ := set.Skip(0, key)
 	return el
 }
 
 // Split set of elements by key
 func (set *Set[K]) Split(key K) *Set[K] {
-	node, path := set.skip(key)
+	node, path := set.Skip(0, key)
 
 	for level, x := range path {
-		x.fingers[level] = nil
+		x.Fingers[level] = nil
 	}
+
+	head := &Element[K]{Fingers: make([]*Element[K], L)}
 
 	tail := &Set[K]{
-		head:   new(Element[K]),
+		head:   head,
 		null:   *new(K),
-		Length: 0,
+		length: 0,
 		random: set.random,
 		path:   [L]*Element[K]{},
+		ptable: set.ptable,
 		malloc: set.malloc,
 	}
-	tail.head.fingers[0] = node
+	tail.head.Fingers[0] = node
 
 	length := 0
-	for n := node; n != nil; n = n.fingers[0] {
+	for n := node; n != nil; n = n.Fingers[0] {
 		length++
 	}
 
-	tail.Length = length
-	set.Length -= length
+	tail.length = length
+	set.length -= length
 
 	return tail
+}
+
+// --------------------------------------------------------------------------------------
+
+// Configure Set properties
+type SetConfig[K Key] func(*Set[K])
+
+// Configure Random Generator
+func SetWithRandomSource[K Key](random rand.Source) SetConfig[K] {
+	return func(set *Set[K]) {
+		set.random = random
+	}
+}
+
+// Configure Memory Allocator
+func SetWithAllocator[K Key](malloc Allocator[K, Element[K]]) SetConfig[K] {
+	return func(set *Set[K]) {
+		set.malloc = malloc
+	}
+}
+
+// Configure Probability table
+// Use math.Log(B)/B < p < math.Pow(B, -0.5)
+//
+// The probability help to control the "distance" between elements on each level
+// Use p = math.Pow(B, -0.5), where B is number of elements
+// On L1 distance is √B, L2 distance is B, Ln distance is (√B)ⁿ
+func SetWithProbability[K Key](p float64) SetConfig[K] {
+	return func(set *Set[K]) {
+		var ptable [L]float64
+
+		for i := 1; i <= L; i++ {
+			ptable[i-1] = math.Pow(p, float64(i-1))
+		}
+
+		set.ptable = ptable
+	}
+}
+
+// Configure Probability table so that each level takes (√B)ⁿ elements
+func SetWithBlockSize[K Key](b int) SetConfig[K] {
+	return SetWithProbability[K](math.Pow(float64(b), -0.5))
 }

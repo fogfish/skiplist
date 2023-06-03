@@ -54,7 +54,7 @@ func TestField(t *testing.T) {
 		e.Next()
 	}
 
-	e = skiplist.ForGF2(gf2, gf2.Successors(0x31))
+	e = skiplist.ForGF2(gf2, gf2.Successor(0x31))
 	for i := 2; i < len(topo); i++ {
 		it.Then(t).Should(
 			it.Equal(e.Key(), topo[i]),
@@ -64,6 +64,7 @@ func TestField(t *testing.T) {
 
 	it.Then(t).Should(
 		it.String(gf2.String()).Contain("SkipGF2"),
+		it.Equal(gf2.Length(), 9),
 	)
 }
 

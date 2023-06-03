@@ -28,44 +28,72 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
 
 	//
-	set := skiplist.NewSet[K]()
+	set := skiplist.NewSet[K](
+		skiplist.SetWithRandomSource[K](rand.NewSource(0x12345678)),
+		skiplist.SetWithAllocator[K](nil),
+		skiplist.SetWithProbability[K](0.5),
+		skiplist.SetWithBlockSize[K](32),
+	)
 
 	t.Run("Add", func(t *testing.T) {
+		f := func(has bool, node *skiplist.Element[K]) bool { return has }
+
 		for _, el := range seq {
 			it.Then(t).Should(
-				it.True(set.Add(el)),
+				it.True(f(set.Add(el))),
 			).ShouldNot(
-				it.True(set.Add(el)),
+				it.True(f(set.Add(el))),
 			)
 		}
 
-		it.Then(t).Should(it.Equal(set.Length, len(seq)))
+		it.Then(t).Should(
+			it.Equal(set.Length(), len(seq)),
+			it.Less(set.Level(), skiplist.L),
+		)
 	})
 
 	t.Run("Has", func(t *testing.T) {
+		f := func(has bool, node *skiplist.Element[K]) bool { return has }
+
 		for _, el := range seq {
 			it.Then(t).Should(
-				it.True(set.Has(el)),
+				it.True(f(set.Has(el))),
 			)
 		}
+	})
+
+	t.Run("Head", func(t *testing.T) {
+		it.Then(t).ShouldNot(
+			it.Nil(set.Head()),
+		)
 	})
 
 	t.Run("Values", func(t *testing.T) {
 		values := set.Values()
 		for i := 0; i < len(sorted); i++ {
 			it.Then(t).Should(
-				it.Equal(values.Key(), sorted[i]),
+				it.Equal(values.Key, sorted[i]),
 			)
 			values = values.Next()
 		}
 	})
 
+	t.Run("Values.NextOn", func(t *testing.T) {
+		values := set.Values()
+		for i := 0; i < len(sorted); i++ {
+			it.Then(t).Should(
+				it.Equal(values.Key, sorted[i]),
+			)
+			values = values.NextOn(0)
+		}
+	})
+
 	t.Run("Successor", func(t *testing.T) {
 		for _, k := range []int{0, len(sorted) / 4, len(sorted) / 2, len(sorted) - 1} {
-			values := set.Successors(sorted[k])
+			values := set.Successor(sorted[k])
 			for i := k; i < len(sorted); i++ {
 				it.Then(t).Should(
-					it.Equal(values.Key(), sorted[i]),
+					it.Equal(values.Key, sorted[i]),
 				)
 				values = values.Next()
 			}
@@ -79,15 +107,17 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 	})
 
 	t.Run("Cut", func(t *testing.T) {
+		f := func(has bool, node *skiplist.Element[K]) bool { return has }
+
 		for _, el := range seq {
 			it.Then(t).Should(
-				it.True(set.Cut(el)),
+				it.True(f(set.Cut(el))),
 			).ShouldNot(
-				it.True(set.Cut(el)),
+				it.True(f(set.Cut(el))),
 			)
 		}
 
-		it.Then(t).Should(it.Equal(set.Length, 0))
+		it.Then(t).Should(it.Equal(set.Length(), 0))
 	})
 
 	t.Run("Split", func(t *testing.T) {
@@ -101,7 +131,7 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 			hval := head.Values()
 			for i := 0; i < k; i++ {
 				it.Then(t).Should(
-					it.Equal(hval.Key(), sorted[i]),
+					it.Equal(hval.Key, sorted[i]),
 				)
 				hval = hval.Next()
 			}
@@ -109,7 +139,7 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 			tval := tail.Values()
 			for i := k; i < len(sorted); i++ {
 				it.Then(t).Should(
-					it.Equal(tval.Key(), sorted[i]),
+					it.Equal(tval.Key, sorted[i]),
 				)
 				tval = tval.Next()
 			}
@@ -196,7 +226,7 @@ func SetBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			defSet.Successors(defKey[n%size])
+			defSet.Successor(defKey[n%size])
 		}
 	})
 
@@ -204,7 +234,7 @@ func SetBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			e := defSet.Successors(defKey[n%size])
+			e := defSet.Successor(defKey[n%size])
 			for i := 0; i < 16 && e != nil; i++ {
 				e = e.Next()
 			}
@@ -215,7 +245,7 @@ func SetBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			e := defSet.Successors(defKey[n%size])
+			e := defSet.Successor(defKey[n%size])
 			for i := 0; i < 64 && e != nil; i++ {
 				e = e.Next()
 			}
@@ -226,7 +256,7 @@ func SetBench[K skiplist.Key](b *testing.B, gen func(int) K) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for n := 0; n < b.N; n++ {
-			e := defSet.Successors(defKey[n%size])
+			e := defSet.Successor(defKey[n%size])
 			for i := 0; i < 64 && e != nil; i++ {
 				e = e.Next()
 			}
@@ -248,14 +278,14 @@ func BenchmarkSetOfString(b *testing.B) {
 
 // ---------------------------------------------------------------
 
-// go test -fuzz=FuzzSetAddCut
+// go test -fuzz=FuzzSetAddHas
 func FuzzSetAddHas(f *testing.F) {
 	set := skiplist.NewSet[string]()
 	f.Add("abc")
 
 	f.Fuzz(func(t *testing.T, el string) {
 		set.Add(el)
-		if !set.Has(el) {
+		if has, _ := set.Has(el); !has {
 			t.Errorf("element %s should be found", el)
 		}
 	})
