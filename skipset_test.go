@@ -62,6 +62,12 @@ func SetSuite[K skiplist.Key](t *testing.T, seq []K) {
 		}
 	})
 
+	t.Run("Head", func(t *testing.T) {
+		it.Then(t).ShouldNot(
+			it.Nil(set.Head()),
+		)
+	})
+
 	t.Run("Values", func(t *testing.T) {
 		values := set.Values()
 		for i := 0; i < len(sorted); i++ {

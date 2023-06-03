@@ -63,7 +63,13 @@ func MapSuite[K skiplist.Key](t *testing.T, seq []K) {
 		}
 	})
 
-	t.Run("Keys", func(t *testing.T) {
+	t.Run("Head", func(t *testing.T) {
+		it.Then(t).ShouldNot(
+			it.Nil(kv.Head()),
+		)
+	})
+
+	t.Run("Values", func(t *testing.T) {
 		values := kv.Values()
 		for i := 0; i < len(sorted); i++ {
 			val, node := kv.Get(values.Key)
