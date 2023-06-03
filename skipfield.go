@@ -115,6 +115,6 @@ func (f *GF2[K]) Keys() *Element[K] {
 	return f.keys.Values()
 }
 
-func (f *GF2[K]) Successors(key K) *Element[K] {
+func (f *GF2[K]) Successor(key K) *Element[K] {
 	return f.keys.Successor(key)
 }
